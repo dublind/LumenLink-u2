@@ -1,0 +1,6 @@
+<!-- Icono vectorial: fondo azul, ampolleta amarilla y base blanca. Las coordenadas dibujan sus formas. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="48dp" android:height="48dp" android:viewportWidth="48" android:viewportHeight="48">
+    <path android:fillColor="#102C40" android:pathData="M0,0h48v48h-48z" />
+    <path android:fillColor="#FFCF66" android:pathData="M24,7a12,12 0,0 1,8 21c-2,2 -3,4 -3,7h-10c0,-3 -1,-5 -3,-7a12,12 0,0 1,8 -21z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M19,37h10v3h-10zM21,42h6v2h-6z" />
+</vector>

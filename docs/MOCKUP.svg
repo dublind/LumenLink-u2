@@ -1,0 +1,91 @@
+<!-- Mapa conceptual: cada grupo de figuras representa una pantalla; las capturas PNG muestran la app real. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="840" viewBox="0 0 1280 840">
+<rect width="1280" height="840" fill="#eaf0f4"/>
+<text x="28" y="42" font-family="Arial,sans-serif" font-size="27" fill="#102c40" font-weight="bold">LumenLink   Iluminación con ultrasónico y LDR</text>
+<text x="28" y="70" font-family="Arial,sans-serif" font-size="16" fill="#526876" font-weight="normal">Mockup conceptual de la Unidad 2   ·   Sensores simulados, conexión Wi-Fi real</text>
+<text x="28" y="112" font-family="Arial,sans-serif" font-size="18" fill="#102c40" font-weight="bold">1. Acceso</text>
+<rect x="28" y="130" width="288" height="630" rx="20" fill="#ffffff"/>
+<rect x="36" y="138" width="272" height="614" rx="14" fill="#f2f6f8"/>
+<rect x="36" y="138" width="272" height="84" rx="12" fill="#102c40"/>
+<text x="52" y="174" font-family="Arial,sans-serif" font-size="23" fill="#ffffff" font-weight="bold">LUMENLINK</text>
+<text x="52" y="202" font-family="Arial,sans-serif" font-size="13" fill="#a4dcde" font-weight="normal">TI3042 · Android · Wi-Fi</text>
+<text x="52" y="266" font-family="Arial,sans-serif" font-size="19" fill="#102c40" font-weight="bold">Iluminación inteligente</text>
+<text x="52" y="296" font-family="Arial,sans-serif" font-size="14" fill="#526876" font-weight="normal">Cuenta local por teléfono</text>
+<rect x="52" y="326" width="236" height="40" rx="8" fill="#ffffff"/>
+<text x="64" y="351" font-family="Arial,sans-serif" font-size="13" fill="#526876" font-weight="normal">Usuario</text>
+<rect x="52" y="382" width="236" height="40" rx="8" fill="#ffffff"/>
+<text x="64" y="407" font-family="Arial,sans-serif" font-size="13" fill="#526876" font-weight="normal">Contraseña</text>
+<text x="52" y="450" font-family="Arial,sans-serif" font-size="12" fill="#526876" font-weight="normal">Contraseña de 12 a 128 caracteres</text>
+<rect x="52" y="474" width="236" height="40" rx="8" fill="#087f8c"/>
+<text x="64" y="499" font-family="Arial,sans-serif" font-size="13" fill="#ffffff" font-weight="bold">Iniciar sesión</text>
+<rect x="52" y="530" width="236" height="40" rx="8" fill="#087f8c"/>
+<text x="64" y="555" font-family="Arial,sans-serif" font-size="13" fill="#ffffff" font-weight="bold">Crear cuenta local</text>
+<text x="52" y="616" font-family="Arial,sans-serif" font-size="14" fill="#102c40" font-weight="bold">LDR: mide iluminación</text>
+<text x="52" y="642" font-family="Arial,sans-serif" font-size="14" fill="#102c40" font-weight="bold">Ultrasónico: mide distancia</text>
+<text x="340" y="112" font-family="Arial,sans-serif" font-size="18" fill="#102c40" font-weight="bold">2. Monitoreo y control</text>
+<rect x="340" y="130" width="288" height="630" rx="20" fill="#ffffff"/>
+<rect x="348" y="138" width="272" height="614" rx="14" fill="#f2f6f8"/>
+<rect x="348" y="138" width="272" height="84" rx="12" fill="#102c40"/>
+<text x="364" y="174" font-family="Arial,sans-serif" font-size="23" fill="#ffffff" font-weight="bold">LUMENLINK</text>
+<text x="364" y="202" font-family="Arial,sans-serif" font-size="13" fill="#a4dcde" font-weight="normal">TI3042 · Android · Wi-Fi</text>
+<rect x="348" y="706" width="272" height="46" rx="8" fill="#ffffff"/>
+<text x="358" y="734" font-family="Arial,sans-serif" font-size="12" fill="#087f8c" font-weight="normal">Panel   Conectar   Historial   Ayuda</text>
+<text x="364" y="262" font-family="Arial,sans-serif" font-size="15" fill="#102c40" font-weight="bold">Conectado · TLS verificado</text>
+<text x="364" y="300" font-family="Arial,sans-serif" font-size="12" fill="#526876" font-weight="normal">DISTANCIA ULTRASÓNICA</text>
+<text x="364" y="354" font-family="Arial,sans-serif" font-size="40" fill="#102c40" font-weight="bold">100.0 cm</text>
+<text x="364" y="390" font-family="Arial,sans-serif" font-size="13" fill="#526876" font-weight="normal">LDR: 10 % de iluminación relativa</text>
+<text x="364" y="430" font-family="Arial,sans-serif" font-size="14" fill="#102c40" font-weight="bold">LUZ ENCENDIDA · Automático</text>
+<text x="364" y="456" font-family="Arial,sans-serif" font-size="13" fill="#526876" font-weight="normal">Motivo: oscuridad detectada</text>
+<rect x="364" y="486" width="236" height="40" rx="8" fill="#087f8c"/>
+<text x="376" y="511" font-family="Arial,sans-serif" font-size="13" fill="#ffffff" font-weight="bold">Encender / apagar luz manualmente</text>
+<rect x="364" y="536" width="236" height="40" rx="8" fill="#087f8c"/>
+<text x="376" y="561" font-family="Arial,sans-serif" font-size="13" fill="#ffffff" font-weight="bold">Activar modo automático</text>
+<rect x="364" y="590" width="236" height="40" rx="8" fill="#ffffff"/>
+<text x="376" y="615" font-family="Arial,sans-serif" font-size="13" fill="#526876" font-weight="normal">Umbral de cercanía: 30 cm</text>
+<rect x="364" y="642" width="236" height="40" rx="8" fill="#ffffff"/>
+<text x="376" y="667" font-family="Arial,sans-serif" font-size="13" fill="#526876" font-weight="normal">Umbral de oscuridad LDR: 30 %</text>
+<text x="652" y="112" font-family="Arial,sans-serif" font-size="18" fill="#102c40" font-weight="bold">3. Conexión</text>
+<rect x="652" y="130" width="288" height="630" rx="20" fill="#ffffff"/>
+<rect x="660" y="138" width="272" height="614" rx="14" fill="#f2f6f8"/>
+<rect x="660" y="138" width="272" height="84" rx="12" fill="#102c40"/>
+<text x="676" y="174" font-family="Arial,sans-serif" font-size="23" fill="#ffffff" font-weight="bold">LUMENLINK</text>
+<text x="676" y="202" font-family="Arial,sans-serif" font-size="13" fill="#a4dcde" font-weight="normal">TI3042 · Android · Wi-Fi</text>
+<rect x="660" y="706" width="272" height="46" rx="8" fill="#ffffff"/>
+<text x="670" y="734" font-family="Arial,sans-serif" font-size="12" fill="#087f8c" font-weight="normal">Panel   Conectar   Historial   Ayuda</text>
+<text x="676" y="264" font-family="Arial,sans-serif" font-size="19" fill="#102c40" font-weight="bold">Rol de este teléfono</text>
+<rect x="676" y="288" width="236" height="40" rx="8" fill="#087f8c"/>
+<text x="688" y="313" font-family="Arial,sans-serif" font-size="13" fill="#ffffff" font-weight="bold">Panel de control</text>
+<rect x="676" y="342" width="236" height="40" rx="8" fill="#087f8c"/>
+<text x="688" y="367" font-family="Arial,sans-serif" font-size="13" fill="#ffffff" font-weight="bold">Nodo IoT simulado</text>
+<text x="676" y="418" font-family="Arial,sans-serif" font-size="16" fill="#102c40" font-weight="bold">En el nodo</text>
+<rect x="676" y="434" width="236" height="40" rx="8" fill="#ffffff"/>
+<text x="688" y="459" font-family="Arial,sans-serif" font-size="13" fill="#526876" font-weight="normal">IPv4 del nodo · puerto 8842</text>
+<rect x="676" y="486" width="236" height="40" rx="8" fill="#087f8c"/>
+<text x="688" y="511" font-family="Arial,sans-serif" font-size="13" fill="#ffffff" font-weight="bold">Iniciar y copiar configuración</text>
+<text x="676" y="568" font-family="Arial,sans-serif" font-size="16" fill="#102c40" font-weight="bold">En el panel</text>
+<rect x="676" y="584" width="236" height="40" rx="8" fill="#ffffff"/>
+<text x="688" y="609" font-family="Arial,sans-serif" font-size="13" fill="#526876" font-weight="normal">Pegar configuración privada</text>
+<rect x="676" y="638" width="236" height="40" rx="8" fill="#087f8c"/>
+<text x="688" y="663" font-family="Arial,sans-serif" font-size="13" fill="#ffffff" font-weight="bold">Conectar de forma segura</text>
+<text x="964" y="112" font-family="Arial,sans-serif" font-size="18" fill="#102c40" font-weight="bold">4. Historial</text>
+<rect x="964" y="130" width="288" height="630" rx="20" fill="#ffffff"/>
+<rect x="972" y="138" width="272" height="614" rx="14" fill="#f2f6f8"/>
+<rect x="972" y="138" width="272" height="84" rx="12" fill="#102c40"/>
+<text x="988" y="174" font-family="Arial,sans-serif" font-size="23" fill="#ffffff" font-weight="bold">LUMENLINK</text>
+<text x="988" y="202" font-family="Arial,sans-serif" font-size="13" fill="#a4dcde" font-weight="normal">TI3042 · Android · Wi-Fi</text>
+<rect x="972" y="706" width="272" height="46" rx="8" fill="#ffffff"/>
+<text x="982" y="734" font-family="Arial,sans-serif" font-size="12" fill="#087f8c" font-weight="normal">Panel   Conectar   Historial   Ayuda</text>
+<text x="988" y="266" font-family="Arial,sans-serif" font-size="19" fill="#102c40" font-weight="bold">Historial de lecturas</text>
+<text x="988" y="296" font-family="Arial,sans-serif" font-size="14" fill="#526876" font-weight="normal">SQLite cifrado · cuenta actual</text>
+<rect x="988" y="326" width="236" height="40" rx="8" fill="#087f8c"/>
+<text x="1000" y="351" font-family="Arial,sans-serif" font-size="13" fill="#ffffff" font-weight="bold">Sincronizar historial del nodo</text>
+<rect x="988" y="378" width="236" height="40" rx="8" fill="#087f8c"/>
+<text x="1000" y="403" font-family="Arial,sans-serif" font-size="13" fill="#ffffff" font-weight="bold">Actualizar lista</text>
+<text x="988" y="460" font-family="Arial,sans-serif" font-size="14" fill="#102c40" font-weight="bold">Lectura 1 · fecha y hora</text>
+<text x="988" y="482" font-family="Arial,sans-serif" font-size="13" fill="#526876" font-weight="normal">100 cm · LDR 10 % · Luz ON</text>
+<text x="988" y="530" font-family="Arial,sans-serif" font-size="14" fill="#102c40" font-weight="bold">Lectura 2 · fecha y hora</text>
+<text x="988" y="552" font-family="Arial,sans-serif" font-size="13" fill="#526876" font-weight="normal">100 cm · LDR 10 % · Luz ON</text>
+<text x="988" y="600" font-family="Arial,sans-serif" font-size="14" fill="#102c40" font-weight="bold">Lectura 3 · fecha y hora</text>
+<text x="988" y="622" font-family="Arial,sans-serif" font-size="13" fill="#526876" font-weight="normal">100 cm · LDR 10 % · Luz ON</text>
+<text x="28" y="798" font-family="Arial,sans-serif" font-size="15" fill="#526876" font-weight="normal">Automático: cercanía O oscuridad → luz encendida. Manual: conserva la orden hasta volver a automático.</text>
+</svg>

@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LumenLink · Vista previa del proyecto</title>
+  <!-- Los colores y la distribución se definen en este archivo CSS. -->
+  <link rel="stylesheet" href="VISTA_PREVIA.css">
+</head>
+<body>
+
+  <header><div class="header-inner"><div><div class="brand">LUMENLINK</div><div class="subbrand">TI3042 · Unidad 2 · Iluminación inteligente</div></div><span class="badge">Vista previa local</span></div></header>
+  <!-- Las tres pestañas comparten esta página y funcionan sin servidor. -->
+  <main>
+    <div class="intro"><div class="eyebrow">Explora el proyecto</div><h1>Prueba la iluminación.</h1><p>Ajusta la distancia y la luz ambiental para ver cómo responde el sistema. También puedes explorar las pantallas de Android y la estructura del proyecto.</p></div>
+    <nav role="tablist" aria-label="Vistas del proyecto">
+      <button role="tab" id="tab-demo" aria-controls="demo" aria-selected="true" tabindex="0" data-tab="demo"><span>01</span> Simulación</button>
+      <button role="tab" id="tab-screens" aria-controls="screens" aria-selected="false" tabindex="-1" data-tab="screens"><span>02</span> App Android</button>
+      <button role="tab" id="tab-design" aria-controls="design" aria-selected="false" tabindex="-1" data-tab="design"><span>03</span> Proyecto</button>
+    </nav>
+    <section id="demo" role="tabpanel" aria-labelledby="tab-demo">
+      <div class="section-heading"><div><h2>Panel de simulación</h2><p>Cambia un sensor y observa el resultado.</p></div><button class="button reset" id="reset">Restablecer</button></div>
+      <div class="workspace">
+        <div class="input-panel"><h3 class="column-title">01 · Sensores de entrada</h3>
+          <div class="card sensor"><div class="sensor-top"><label for="distance">Distancia ultrasónica</label><output id="distance-value" for="distance">100 cm</output></div><input id="distance" type="range" min="0" max="500" step="1" value="100" aria-label="Distancia ultrasónica en centímetros"><div class="range-labels"><span>Cerca · 0 cm</span><span>Lejos · 500 cm</span></div><div class="buttons"><button class="button" id="near">Cerca · 10 cm</button><button class="button" id="far">Lejos · 100 cm</button></div></div>
+          <div class="card sensor"><div class="sensor-top"><label for="ldr">Iluminación ambiental · LDR</label><output id="ldr-value" for="ldr">80 %</output></div><input id="ldr" type="range" min="0" max="100" step="1" value="80" aria-label="Iluminación relativa LDR en porcentaje"><div class="range-labels"><span>Oscuro · 0 %</span><span>Iluminado · 100 %</span></div><div class="buttons"><button class="button" id="dark">Sombra · 10 %</button><button class="button" id="bright">Luz · 80 %</button></div></div>
+        </div>
+        <div class="output-panel"><h3 class="column-title">02 · Estado de la luz</h3>
+          <div class="result-card"><span class="mode" id="mode">MODO AUTOMÁTICO</span><svg class="bulb" id="bulb" viewBox="0 0 80 110" aria-hidden="true"><path fill="currentColor" d="M40 4a28 28 0 0 1 19 49c-7 6-8 13-8 24H29c0-11-1-18-8-24A28 28 0 0 1 40 4Z"/><path fill="#c9d8df" d="M28 82h24v8H28zM32 94h16v7H32z"/></svg><div class="light-state" id="light-state" role="status" aria-live="polite">LUZ APAGADA</div><p id="cause">Sin cercanía ni oscuridad.</p></div>
+          <div class="card output-actions"><h3>Control de la luz</h3><div class="manual-buttons"><button class="button" id="manual-on" aria-pressed="false">Encender manual</button><button class="button" id="manual-off" aria-pressed="false">Apagar manual</button></div><button class="button primary auto-button" id="automatic" aria-pressed="true">Modo automático</button></div>
+        </div>
+      </div>
+      <div class="rule-strip"><strong>Regla automática</strong><span>La luz se enciende con distancia ≤ <strong id="rule-distance">30 cm</strong> <strong>o</strong> iluminación ≤ <strong id="rule-ldr">30 %</strong>.</span></div>
+      <details class="disclosure"><summary><span><span class="summary-title">Ajustar umbrales</span><span class="summary-description">Define cuándo se considera cercanía u oscuridad.</span></span></summary><div class="disclosure-body"><div class="settings-grid"><label for="threshold">Cercanía (cm)<input id="threshold" type="number" min="5" max="200" step="0.1" value="30"></label><label for="ldr-threshold">Oscuridad LDR (%)<input id="ldr-threshold" type="number" min="0" max="100" step="0.1" value="30"></label><button class="button primary" id="apply">Aplicar umbrales</button></div><div id="feedback" role="status" aria-live="polite"></div><p class="small settings-note">La LDR usa un porcentaje relativo: 0 % es oscuro y 100 % iluminado. No equivale a lux. En modo manual se conserva tu orden hasta volver a automático.</p></div></details>
+      <details class="disclosure"><summary><span><span class="summary-title">Actividad reciente</span><span class="summary-description">Últimos 6 cambios de esta simulación.</span></span></summary><div class="disclosure-body"><div class="table-wrap"><table><thead><tr><th scope="col">Hora</th><th scope="col">Distancia</th><th scope="col">LDR</th><th scope="col">Luz</th><th scope="col">Modo</th></tr></thead><tbody id="history"></tbody></table></div><p class="small settings-note">Registro temporal del navegador. El historial de la app Android se guarda por separado en SQLite.</p></div></details>
+    </section>
+    <section id="screens" role="tabpanel" aria-labelledby="tab-screens" hidden><h2>Un recorrido por la app Android</h2><p class="note">Capturas del emulador incluidas en el proyecto, con una cuenta de prueba.</p><div class="gallery">
+      <figure><figcaption><span>01</span> Acceso</figcaption><img src="docs/evidencias/01-acceso.png" alt="Pantalla Android de registro e inicio de sesión" loading="lazy"><p>Crea una cuenta local e inicia sesión.</p></figure>
+      <figure><figcaption><span>02</span> Panel</figcaption><img src="docs/evidencias/02-panel.png" alt="Panel Android con distancia e iluminación LDR" loading="lazy"><p>Consulta sensores, tendencia y estado de la luz.</p></figure>
+      <figure><figcaption><span>03</span> Nodo simulado</figcaption><img src="docs/evidencias/04-simulacion.png" alt="Controles Android para simular cercanía y oscuridad" loading="lazy"><p>Prueba cercanía e iluminación desde el nodo.</p></figure>
+      <figure><figcaption><span>04</span> Historial</figcaption><img src="docs/evidencias/03-historial.png" alt="Historial Android de las lecturas y el estado de la luz" loading="lazy"><p>Revisa las lecturas guardadas por la aplicación.</p></figure>
+    </div><p class="note">Estas imágenes muestran la aplicación. Para usar el acceso, SQLite y la conexión TLS entre teléfonos necesitas ejecutar la APK.</p></section>
+    <section id="design" role="tabpanel" aria-labelledby="tab-design" hidden><h2>Cómo se organiza LumenLink</h2><p class="note">Dos archivos de aplicación: MainActivity.kt reúne Android y core/Logica.kt contiene las reglas y los datos.</p><div class="project-grid">
+      <div class="card"><h3>Reglas de iluminación</h3><p>Evalúa los sensores y los umbrales. Mantiene la orden manual hasta regresar al modo automático.</p><code>core/Logica.kt · LightingController</code></div>
+      <div class="card"><h3>Pantallas y navegación</h3><p>Organiza el acceso, el panel, la conexión, el simulador y la consulta del historial.</p><code>MainActivity.kt · bloques 1 y 2</code></div>
+      <div class="card"><h3>Conexión entre teléfonos</h3><p>Intercambia lecturas y comandos por Wi-Fi con TLS, huella del certificado y token de emparejamiento.</p><code>MainActivity.kt · bloque 3 / core/Logica.kt · bloque 2</code></div>
+      <div class="card"><h3>Datos y seguridad</h3><p>Guarda cuentas y lecturas en SQLite. Protege las contraseñas, cifra las lecturas y gestiona las claves.</p><code>MainActivity.kt · bloques 4 y 5 / core/Logica.kt · bloque 3</code></div>
+    </div><div class="card mockup-card"><h3>Mapa visual de las pantallas</h3><img class="mockup" src="docs/MOCKUP.svg" alt="Mockup de acceso, monitoreo, conexión e historial de LumenLink" loading="lazy"></div></section>
+    <footer><span>Vista web de demostración · La aplicación se ejecuta en Android.</span><span>Datos locales · Se reinician al recargar.</span></footer>
+  </main>
+  <script>
+    // Esta vista reproduce la regla de core/Logica.kt; no sustituye al sistema Android.
+    const state = { distance: 100, ldr: 80, threshold: 30, ldrThreshold: 30, automatic: true, light: false };
+    const records = [];
+    const byId = id => document.getElementById(id);
+    const number = value => Number(value).toLocaleString('es-CL', { maximumFractionDigits: 1 });
+
+    // Actualiza sensores, estado de la luz y, si corresponde, la actividad reciente.
+    function render(record = true) {
+      const near = state.distance <= state.threshold;
+      const dark = state.ldr <= state.ldrThreshold;
+      // El modo manual evita que un cambio de sensores reemplace la orden del usuario.
+      if (state.automatic) state.light = near || dark;
+      byId('distance').value = state.distance;
+      byId('ldr').value = state.ldr;
+      byId('distance-value').textContent = `${number(state.distance)} cm`;
+      byId('ldr-value').textContent = `${number(state.ldr)} %`;
+      byId('light-state').textContent = state.light ? 'LUZ ENCENDIDA' : 'LUZ APAGADA';
+      byId('mode').textContent = state.automatic ? 'MODO AUTOMÁTICO' : 'MODO MANUAL';
+      byId('bulb').classList.toggle('on', state.light);
+      byId('cause').textContent = !state.automatic ? 'Se conserva la última orden manual.' : near && dark ? 'Cercanía y oscuridad detectadas.' : near ? 'Ultrasónico: objeto cercano.' : dark ? 'LDR: oscuridad o sombra.' : 'Sin cercanía ni oscuridad.';
+      byId('manual-on').setAttribute('aria-pressed', String(!state.automatic && state.light));
+      byId('manual-off').setAttribute('aria-pressed', String(!state.automatic && !state.light));
+      byId('automatic').setAttribute('aria-pressed', String(state.automatic));
+      byId('rule-distance').textContent = `${number(state.threshold)} cm`;
+      byId('rule-ldr').textContent = `${number(state.ldrThreshold)} %`;
+      if (record) {
+        records.unshift([new Date().toLocaleTimeString('es-CL'), `${number(state.distance)} cm`, `${number(state.ldr)} %`, state.light ? 'Encendida' : 'Apagada', state.automatic ? 'Automático' : 'Manual']);
+        records.splice(6);
+        const body = byId('history');
+        body.replaceChildren();
+        for (const values of records) {
+          const row = document.createElement('tr');
+          for (const value of values) { const cell = document.createElement('td'); cell.textContent = value; row.append(cell); }
+          body.append(row);
+        }
+      }
+    }
+    function sensors(distance, ldr) { state.distance = distance; state.ldr = ldr; byId('feedback').textContent = ''; render(); }
+    byId('distance').addEventListener('input', event => sensors(Number(event.target.value), state.ldr));
+    byId('ldr').addEventListener('input', event => sensors(state.distance, Number(event.target.value)));
+    byId('near').addEventListener('click', () => sensors(10, state.ldr));
+    byId('far').addEventListener('click', () => sensors(100, state.ldr));
+    byId('dark').addEventListener('click', () => sensors(state.distance, 10));
+    byId('bright').addEventListener('click', () => sensors(state.distance, 80));
+    byId('manual-on').addEventListener('click', () => { state.automatic = false; state.light = true; render(); });
+    byId('manual-off').addEventListener('click', () => { state.automatic = false; state.light = false; render(); });
+    byId('automatic').addEventListener('click', () => { state.automatic = true; render(); });
+    byId('apply').addEventListener('click', () => {
+      const threshold = byId('threshold').valueAsNumber;
+      const ldrThreshold = byId('ldr-threshold').valueAsNumber;
+      // Rechaza la entrada completa antes de modificar los dos umbrales.
+      if (!Number.isFinite(threshold) || threshold < 5 || threshold > 200 || !Number.isFinite(ldrThreshold) || ldrThreshold < 0 || ldrThreshold > 100) {
+        byId('feedback').textContent = 'Usa 5–200 cm para cercanía y 0–100 % para LDR.';
+        return;
+      }
+      state.threshold = threshold; state.ldrThreshold = ldrThreshold;
+      byId('feedback').textContent = 'Umbrales aplicados en esta simulación.';
+      render();
+    });
+    byId('reset').addEventListener('click', () => {
+      Object.assign(state, { distance: 100, ldr: 80, threshold: 30, ldrThreshold: 30, automatic: true, light: false });
+      byId('threshold').value = 30; byId('ldr-threshold').value = 30;
+      byId('feedback').textContent = ''; records.length = 0; render();
+    });
+    // Muestra únicamente el panel asociado a la pestaña seleccionada.
+    const tabs = [...document.querySelectorAll('[role="tab"]')];
+    for (const tab of tabs) tab.addEventListener('click', () => {
+      for (const item of tabs) {
+        const selected = item === tab;
+        item.setAttribute('aria-selected', String(selected));
+        item.tabIndex = selected ? 0 : -1;
+        byId(item.dataset.tab).hidden = !selected;
+      }
+    });
+    // Las flechas permiten cambiar de pestaña también desde el teclado.
+    for (const [index, tab] of tabs.entries()) tab.addEventListener('keydown', event => {
+      if (!['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+      tabs[next].click(); tabs[next].focus();
+    });
+    render();
+  </script>
+</body>
+</html>

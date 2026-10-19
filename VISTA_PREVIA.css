@@ -1,0 +1,742 @@
+/*
+ * VISTA_PREVIA.css: todos los estilos de la vista web.
+ * HTML organiza el contenido; este archivo define colores, tamaños y distribución.
+ * Las reglas @media ajustan el diseño a pantallas más pequeñas.
+ */
+
+/* Colores compartidos. Cambia estas variables para ajustar la paleta de toda la vista. */
+:root {
+  --ink:#102c40;
+  --muted:#5a6e7b;
+  --accent:#087f8c;
+  --paper:#f3f6f8;
+  --line:#dde6eb;
+  --gold:#ffcf66;
+}
+
+* {
+  box-sizing:border-box;
+}
+
+body {
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:15px;
+}
+
+button,input {
+  font:inherit;
+}
+
+button,summary {
+  cursor:pointer;
+}
+
+:focus-visible {
+  outline:3px solid #d69a26;
+  outline-offset:4px;
+}
+
+/* Encabezado: marca, subtítulo e indicación de que la vista es local. */
+header {
+  background:var(--ink);
+  color:white;
+}
+
+.header-inner {
+  max-width:1168px;
+  margin:auto;
+  min-height:78px;
+  padding:18px 24px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
+
+.brand {
+  font-size:21px;
+  letter-spacing:.1em;
+  font-weight:800;
+}
+
+.subbrand {
+  color:#b2cbd7;
+  font-size:12px;
+  margin-top:4px;
+}
+
+.badge {
+  font-size:12px;
+  color:#d4e8ec;
+}
+
+/* Contenido principal: ancho máximo, márgenes, títulos y textos. */
+main {
+  max-width:1168px;
+  margin:auto;
+  padding:30px 24px 24px;
+}
+
+h1,h2,h3,p {
+  margin:0;
+}
+
+h1 {
+  font-size:clamp(26px,3vw,34px);
+  line-height:1.2;
+  letter-spacing:-.04em;
+}
+
+h2 {
+  font-size:19px;
+  letter-spacing:-.025em;
+}
+
+h3 {
+  font-size:16px;
+  line-height:1.4;
+}
+
+p {
+  line-height:1.65;
+  color:var(--muted);
+}
+
+.intro p {
+  margin-top:9px;
+  max-width:740px;
+  font-size:14px;
+}
+
+.eyebrow {
+  font-size:11px;
+  font-weight:750;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--accent);
+  margin-bottom:9px;
+}
+
+/* Pestañas: la seleccionada se distingue mediante aria-selected. */
+nav {
+  display:flex;
+  gap:6px;
+  margin:24px 0;
+  border-bottom:1px solid var(--line);
+  padding-bottom:12px;
+}
+
+nav button {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:9px;
+  background:transparent;
+  border:0;
+  border-radius:9px;
+  color:var(--muted);
+  padding:11px 17px;
+  font-size:14px;
+  font-weight:650;
+}
+
+nav button span {
+  font-size:11px;
+  opacity:.65;
+}
+
+nav button:hover {
+  background:#e8eef2;
+}
+
+nav button[aria-selected="true"] {
+  background:var(--ink);
+  color:white;
+}
+
+[hidden] {
+  display:none!important;
+}
+
+.section-heading {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:16px;
+  margin-bottom:16px;
+}
+
+.section-heading p {
+  font-size:13px;
+  margin-top:4px;
+}
+
+/* Simulación: sensores a la izquierda y resultado a la derecha en pantallas grandes. */
+.workspace {
+  display:grid;
+  grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);
+  gap:22px;
+  align-items:stretch;
+}
+
+.input-panel,.output-panel {
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+
+.column-title {
+  font-size:11px;
+  color:var(--muted);
+  font-weight:750;
+  letter-spacing:.13em;
+  text-transform:uppercase;
+  padding-left:2px;
+}
+
+.card {
+  background:white;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:22px;
+  min-width:0;
+}
+
+.sensor {
+  flex:1;
+}
+
+.sensor-top {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+
+label {
+  font-size:14px;
+  font-weight:650;
+}
+
+output {
+  font-size:27px;
+  font-weight:750;
+  letter-spacing:-.04em;
+  white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+
+.range-labels {
+  display:flex;
+  justify-content:space-between;
+  color:var(--muted);
+  font-size:11px;
+}
+
+input[type="range"] {
+  display:block;
+  width:100%;
+  height:22px;
+  accent-color:var(--accent);
+  cursor:pointer;
+  margin:15px 0 2px;
+}
+
+.buttons {
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+.sensor .buttons {
+  margin-top:15px;
+}
+
+/* Botones: apariencia común y variantes para acciones principales y estados activos. */
+.button {
+  min-height:42px;
+  padding:10px 14px;
+  border-radius:8px;
+  border:1px solid var(--line);
+  background:white;
+  color:var(--ink);
+  font-weight:650;
+  font-size:13px;
+  line-height:1.4;
+}
+
+.button:hover {
+  background:#edf5f6;
+  border-color:#b6d5d8;
+}
+
+.primary {
+  background:var(--accent);
+  color:white;
+  border-color:var(--accent);
+}
+
+.primary:hover {
+  background:#066975;
+  color:white;
+}
+
+.reset {
+  background:transparent;
+  color:var(--muted);
+  white-space:nowrap;
+}
+
+/* Resultado: tarjeta oscura, ampolleta y estado confirmado de la simulación. */
+.result-card {
+  flex:1;
+  background:var(--ink);
+  border-radius:14px;
+  padding:24px;
+  color:white;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+}
+
+.mode {
+  border:1px solid #4b6a7b;
+  border-radius:30px;
+  padding:6px 12px;
+  font-size:10px;
+  font-weight:650;
+  letter-spacing:.08em;
+  color:#c5dde5;
+}
+
+.bulb {
+  width:66px;
+  height:88px;
+  display:block;
+  margin:19px auto 13px;
+  color:#527081;
+  transition:color .2s,filter .2s;
+}
+
+.bulb.on {
+  color:var(--gold);
+  filter:drop-shadow(0 0 20px #ffcf6660);
+}
+
+.light-state {
+  font-size:24px;
+  font-weight:800;
+  letter-spacing:-.02em;
+}
+
+.result-card p {
+  color:#bdd2dd;
+  font-size:13px;
+  margin-top:7px;
+  min-height:22px;
+}
+
+.output-actions {
+  padding:18px 20px;
+}
+
+.output-actions h3 {
+  font-size:13px;
+  margin-bottom:11px;
+}
+
+.manual-buttons {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+
+.auto-button {
+  width:100%;
+  margin-top:8px;
+}
+
+.button[aria-pressed="true"] {
+  background:#e4f2f3;
+  color:#075b65;
+  border-color:#6aabb2;
+}
+
+.primary[aria-pressed="true"] {
+  background:var(--accent);
+  color:white;
+  border-color:var(--accent);
+}
+
+.rule-strip {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  background:#e8f1f3;
+  border:1px solid #d6e6e9;
+  border-radius:10px;
+  padding:13px 17px;
+  margin-top:18px;
+  font-size:13px;
+  line-height:1.6;
+  color:#3d596b;
+}
+
+.rule-strip strong {
+  color:var(--ink);
+}
+
+/* Detalles desplegables: umbrales y actividad reciente. */
+.disclosure {
+  background:white;
+  border:1px solid var(--line);
+  border-radius:12px;
+  margin-top:14px;
+  overflow:hidden;
+}
+
+summary {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:18px 20px;
+  list-style:none;
+}
+
+summary::-webkit-details-marker {
+  display:none;
+}
+
+.summary-title {
+  display:block;
+  font-size:14px;
+  font-weight:700;
+}
+
+.summary-description {
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+  margin-top:4px;
+  line-height:1.5;
+}
+
+summary::after {
+  content:"+";
+  font-size:22px;
+  color:var(--accent);
+  flex-shrink:0;
+}
+
+.disclosure[open]>summary::after {
+  content:"−";
+}
+
+.disclosure[open]>summary {
+  border-bottom:1px solid var(--line);
+}
+
+.disclosure-body {
+  padding:20px;
+}
+
+.settings-grid {
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;
+  gap:16px;
+  align-items:end;
+}
+
+input[type="number"] {
+  display:block;
+  width:100%;
+  border:1px solid #b9cbd4;
+  border-radius:8px;
+  padding:11px 12px;
+  margin-top:8px;
+  color:var(--ink);
+  background:white;
+  font-size:14px;
+  min-height:44px;
+}
+
+#feedback {
+  font-size:13px;
+  color:var(--accent);
+  line-height:1.5;
+}
+
+#feedback:not(:empty) {
+  margin-top:14px;
+}
+
+.small {
+  font-size:12px;
+}
+
+.settings-note {
+  margin-top:15px;
+}
+
+/* Historial: permite desplazar la tabla horizontalmente si falta espacio. */
+.table-wrap {
+  overflow:auto;
+}
+
+table {
+  border-collapse:collapse;
+  width:100%;
+  font-size:13px;
+  text-align:left;
+  font-variant-numeric:tabular-nums;
+}
+
+th,td {
+  padding:12px;
+  border-bottom:1px solid var(--line);
+  white-space:nowrap;
+}
+
+th {
+  color:var(--muted);
+  font-size:11px;
+  font-weight:650;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+
+tbody tr:last-child td {
+  border-bottom:0;
+}
+
+/* Galería de capturas de Android y tarjetas que explican el código. */
+.gallery {
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:18px;
+  margin-top:22px;
+}
+
+figure {
+  margin:0;
+  background:white;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:16px;
+  min-width:0;
+}
+
+figcaption {
+  font-size:14px;
+  font-weight:700;
+  margin-bottom:14px;
+}
+
+figcaption span {
+  color:var(--accent);
+  font-size:11px;
+  margin-right:7px;
+}
+
+figure img {
+  display:block;
+  width:100%;
+  height:auto;
+  border-radius:8px;
+  border:1px solid var(--line);
+}
+
+figure p {
+  font-size:12px;
+  margin-top:12px;
+}
+
+.note {
+  font-size:13px;
+  margin-top:14px;
+}
+
+.project-grid {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px;
+  margin:22px 0;
+}
+
+.project-grid h3 {
+  margin-bottom:8px;
+}
+
+.project-grid p {
+  font-size:13px;
+}
+
+.project-grid code {
+  display:block;
+  font-size:11px;
+  overflow-wrap:anywhere;
+  color:var(--accent);
+  margin-top:12px;
+}
+
+.mockup {
+  display:block;
+  width:100%;
+  height:auto;
+}
+
+.mockup-card {
+  margin-top:20px;
+  overflow:auto;
+}
+
+.mockup-card h3 {
+  margin-bottom:18px;
+}
+
+/* Pie de página con el alcance de la demostración. */
+footer {
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  font-size:11px;
+  color:var(--muted);
+  border-top:1px solid var(--line);
+  margin-top:28px;
+  padding-top:18px;
+  line-height:1.7;
+}
+
+/* Adaptación a tabletas y teléfonos: se reorganizan las columnas según el ancho disponible. */
+@media(max-width:900px) {
+  .gallery {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .settings-grid {
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .settings-grid .button {
+    grid-column:1/-1;
+  }
+  .workspace {
+    gap:16px;
+  }
+  .sensor-top {
+    align-items:flex-start;
+    flex-direction:column;
+    gap:6px;
+  }
+}
+
+@media(max-width:640px) {
+  .header-inner {
+    padding:16px 18px;
+    min-height:72px;
+  }
+  .badge,.subbrand {
+    font-size:10px;
+  }
+  main {
+    padding:24px 16px;
+  }
+  .intro p {
+    font-size:13px;
+  }
+  nav {
+    gap:4px;
+    margin:22px 0;
+  }
+  nav button {
+    flex:1;
+    font-size:12px;
+    padding:11px 7px;
+    gap:5px;
+  }
+  nav button span {
+    display:none;
+  }
+  .section-heading {
+    align-items:flex-start;
+  }
+  .section-heading p {
+    max-width:210px;
+  }
+  .reset {
+    font-size:11px;
+    padding:9px 10px;
+    white-space:normal;
+    max-width:106px;
+  }
+  .workspace {
+    grid-template-columns:minmax(0,1fr);
+    gap:22px;
+  }
+  .sensor-top {
+    flex-direction:row;
+    align-items:center;
+    gap:12px;
+  }
+  .card {
+    padding:18px;
+  }
+  .sensor label {
+    font-size:13px;
+  }
+  output {
+    font-size:25px;
+  }
+  .result-card {
+    padding:22px;
+    min-height:240px;
+  }
+  .output-actions {
+    padding:17px;
+  }
+  .rule-strip {
+    display:block;
+    font-size:12px;
+  }
+  .rule-strip>strong {
+    display:block;
+    margin-bottom:3px;
+  }
+  .settings-grid {
+    gap:12px;
+  }
+  .settings-grid label {
+    font-size:12px;
+  }
+  summary {
+    padding:17px;
+  }
+  .disclosure-body {
+    padding:16px;
+  }
+  .project-grid {
+    grid-template-columns:1fr;
+  }
+  footer {
+    flex-direction:column;
+    gap:4px;
+  }
+}
+
+@media(max-width:380px) {
+  .badge {
+    display:none;
+  }
+  .sensor-top {
+    align-items:flex-start;
+    flex-direction:column;
+  }
+  .gallery,.settings-grid {
+    grid-template-columns:1fr;
+  }
+}

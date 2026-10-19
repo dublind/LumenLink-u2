@@ -1,0 +1,10 @@
+# Excluye archivos generados, configuración de esta máquina y almacenes de claves.
+.gradle/
+.kotlin/
+.idea/
+local.properties
+**/build/
+*.iml
+*.jks
+*.keystore
+captures/

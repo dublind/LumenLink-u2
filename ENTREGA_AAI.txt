@@ -1,0 +1,14 @@
+TI3042 - Unidad 2 - Aplicaciones Moviles Android
+Proyecto: LumenLink - Iluminacion con ultrasonico y LDR
+
+Enlace al repositorio GitHub:
+https://github.com/dublind/LumenLink-u2
+
+Antes de subir este archivo a AAI:
+1. Abrir el enlace y comprobar que muestra el codigo y las carpetas del proyecto.
+2. Comprobar que el enlace anterior se conserva correctamente en este archivo.
+3. Verificar que el docente tenga acceso al repositorio.
+4. Agregar nombre y seccion si la tarea lo solicita.
+5. Guardar y cargar antes del cierre de la evaluacion.
+
+El enlace esta completado. La carga de este archivo en AAI sigue pendiente.
