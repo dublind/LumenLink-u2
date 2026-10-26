@@ -40,16 +40,16 @@
       <figure><figcaption><span>03</span> Nodo simulado</figcaption><img src="docs/evidencias/04-simulacion.png" alt="Controles Android para simular cercanía y oscuridad" loading="lazy"><p>Prueba cercanía e iluminación desde el nodo.</p></figure>
       <figure><figcaption><span>04</span> Historial</figcaption><img src="docs/evidencias/03-historial.png" alt="Historial Android de las lecturas y el estado de la luz" loading="lazy"><p>Revisa las lecturas guardadas por la aplicación.</p></figure>
     </div><p class="note">Estas imágenes muestran la aplicación. Para usar el acceso, SQLite y la conexión TLS entre teléfonos necesitas ejecutar la APK.</p></section>
-    <section id="design" role="tabpanel" aria-labelledby="tab-design" hidden><h2>Cómo se organiza LumenLink</h2><p class="note">Dos archivos de aplicación: MainActivity.kt reúne Android y core/Logica.kt contiene las reglas y los datos.</p><div class="project-grid">
-      <div class="card"><h3>Reglas de iluminación</h3><p>Evalúa los sensores y los umbrales. Mantiene la orden manual hasta regresar al modo automático.</p><code>core/Logica.kt · LightingController</code></div>
-      <div class="card"><h3>Pantallas y navegación</h3><p>Organiza el acceso, el panel, la conexión, el simulador y la consulta del historial.</p><code>MainActivity.kt · bloques 1 y 2</code></div>
-      <div class="card"><h3>Conexión entre teléfonos</h3><p>Intercambia lecturas y comandos por Wi-Fi con TLS, huella del certificado y token de emparejamiento.</p><code>MainActivity.kt · bloque 3 / core/Logica.kt · bloque 2</code></div>
-      <div class="card"><h3>Datos y seguridad</h3><p>Guarda cuentas y lecturas en SQLite. Protege las contraseñas, cifra las lecturas y gestiona las claves.</p><code>MainActivity.kt · bloques 4 y 5 / core/Logica.kt · bloque 3</code></div>
+    <section id="design" role="tabpanel" aria-labelledby="tab-design" hidden><h2>Cómo se organiza LumenLink</h2><p class="note">Cada archivo contiene una clase y lleva su nombre: MainActivity.kt tiene las pantallas, la carpeta core/ las reglas y los datos.</p><div class="project-grid">
+      <div class="card"><h3>Reglas de iluminación</h3><p>Evalúa los sensores y los umbrales. Mantiene la orden manual hasta regresar al modo automático.</p><code>core/LightingController.kt</code></div>
+      <div class="card"><h3>Pantallas y navegación</h3><p>Organiza el acceso, el panel, la conexión, el simulador y la consulta del historial.</p><code>MainActivity.kt · TrendView.kt · LdrBar.kt</code></div>
+      <div class="card"><h3>Conexión entre teléfonos</h3><p>Intercambia lecturas y comandos por Wi-Fi con TLS, huella del certificado y token de emparejamiento.</p><code>NetworkEngine.kt · core/Frames.kt · core/Pairing.kt · core/PinnedTrust.kt</code></div>
+      <div class="card"><h3>Datos y seguridad</h3><p>Guarda cuentas y lecturas en SQLite. Protege las contraseñas, cifra las lecturas y gestiona las claves.</p><code>AppDatabase.kt · DeviceSecurity.kt · core/PasswordHasher.kt</code></div>
     </div><div class="card mockup-card"><h3>Mapa visual de las pantallas</h3><img class="mockup" src="docs/MOCKUP.svg" alt="Mockup de acceso, monitoreo, conexión e historial de LumenLink" loading="lazy"></div></section>
     <footer><span>Vista web de demostración · La aplicación se ejecuta en Android.</span><span>Datos locales · Se reinician al recargar.</span></footer>
   </main>
   <script>
-    // Esta vista reproduce la regla de core/Logica.kt; no sustituye al sistema Android.
+    // Esta vista reproduce la regla de core/LightingController.kt; no sustituye al sistema Android.
     const state = { distance: 100, ldr: 80, threshold: 30, ldrThreshold: 30, automatic: true, light: false };
     const records = [];
     const byId = id => document.getElementById(id);

@@ -4,26 +4,16 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.ClipData
 import android.content.ClipboardManager
-import android.content.ContentValues
 import android.content.Context
-import android.database.sqlite.SQLiteDatabase
-import android.database.sqlite.SQLiteOpenHelper
-import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.Path
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.security.keystore.KeyGenParameterSpec
-import android.security.keystore.KeyProperties
 import android.text.InputFilter
 import android.text.InputType
-import android.util.Base64
 import android.view.Gravity
-import android.view.View
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.EditText
@@ -31,56 +21,23 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
-
 import cl.ti3042.lumenlink.core.EnergyCalculator
-import cl.ti3042.lumenlink.core.Frames
 import cl.ti3042.lumenlink.core.HistoryFilter
 import cl.ti3042.lumenlink.core.LightingController
 import cl.ti3042.lumenlink.core.Pairing
 import cl.ti3042.lumenlink.core.PasswordHasher
-import cl.ti3042.lumenlink.core.PinnedTrust
 import cl.ti3042.lumenlink.core.Reading
 import cl.ti3042.lumenlink.core.ReadingStats
-import cl.ti3042.lumenlink.core.fingerprint
-
 import org.json.JSONArray
 import org.json.JSONObject
-
-import java.io.DataInputStream
-import java.io.DataOutputStream
-import java.math.BigInteger
 import java.net.Inet4Address
-import java.net.InetSocketAddress
 import java.net.NetworkInterface
-import java.net.ServerSocket
-import java.net.Socket
-import java.security.KeyPairGenerator
-import java.security.KeyStore
-import java.security.MessageDigest
-import java.security.Principal
-import java.security.PrivateKey
 import java.security.SecureRandom
-import java.security.cert.X509Certificate
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
 import java.util.concurrent.Executors
-import java.util.concurrent.atomic.AtomicLong
-
-import javax.crypto.Cipher
-import javax.crypto.KeyGenerator
-import javax.crypto.SecretKey
-import javax.crypto.spec.GCMParameterSpec
-import javax.net.ssl.KeyManager
-import javax.net.ssl.SSLContext
-import javax.net.ssl.SSLServerSocket
-import javax.net.ssl.SSLSocket
-import javax.net.ssl.TrustManager
-import javax.net.ssl.X509KeyManager
-import javax.security.auth.x500.X500Principal
-
-// BLOQUE 1: PANTALLAS
 
 class MainActivity : Activity() {
     private val navy = Color.rgb(16, 44, 64)
@@ -697,322 +654,5 @@ class MainActivity : Activity() {
             .setMessage("Se detendrá la conexión con el otro teléfono.")
             .setPositiveButton("Salir") { _, _ -> finish() }.setNegativeButton("Volver", null).show()
         else super.onBackPressed()
-    }
-}
-
-// BLOQUE 2: GRÁFICOS
-
-class TrendView(context: Context) : View(context) {
-    var values: List<Float> = emptyList()
-    var lineColor: Int = Color.rgb(8, 127, 140)
-    var fixedRange: ClosedFloatingPointRange<Float>? = null
-    var marker: Float? = null
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-        val density = resources.displayMetrics.density
-        paint.color = Color.rgb(224, 233, 237); paint.strokeWidth = density
-        for (i in 1..3) canvas.drawLine(0f, height * i / 4f, width.toFloat(), height * i / 4f, paint)
-        val low = fixedRange?.start ?: ((values.minOrNull() ?: 0f) - 1f)
-        val high = fixedRange?.endInclusive ?: ((values.maxOrNull() ?: 0f) + 1f)
-        fun y(value: Float) = height - (value - low) / (high - low) * (height - 16 * density) - 8 * density
-        marker?.let { m ->
-            paint.color = Color.rgb(16, 44, 64); paint.strokeWidth = 2 * density
-            canvas.drawLine(0f, y(m), width.toFloat(), y(m), paint)
-        }
-        if (values.size < 2) return
-        val path = Path()
-        values.forEachIndexed { index, value ->
-            val x = index.toFloat() * width / (values.size - 1)
-            if (index == 0) path.moveTo(x, y(value)) else path.lineTo(x, y(value))
-        }
-        paint.style = Paint.Style.STROKE; paint.strokeWidth = 3 * density; paint.color = lineColor
-        canvas.drawPath(path, paint)
-        paint.style = Paint.Style.FILL
-    }
-}
-
-class LdrBar(context: Context) : View(context) {
-    companion object {
-        val amber: Int = Color.rgb(245, 166, 35)
-        val amberDark: Int = Color.rgb(176, 104, 0)
-    }
-    var percent: Float = 0f
-    var threshold: Float = 30f
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val box = android.graphics.RectF()
-    override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
-        val density = resources.displayMetrics.density
-        val radius = height / 2f
-        box.set(0f, 0f, width.toFloat(), height.toFloat())
-        paint.shader = null; paint.color = Color.rgb(224, 233, 237)
-        canvas.drawRoundRect(box, radius, radius, paint)
-        val fill = width * percent.coerceIn(0f, 100f) / 100f
-        if (fill > 0f) {
-            paint.shader = android.graphics.LinearGradient(0f, 0f, width.toFloat(), 0f,
-                Color.rgb(16, 44, 64), Color.rgb(255, 214, 10), android.graphics.Shader.TileMode.CLAMP)
-            box.set(0f, 0f, fill.coerceAtLeast(height.toFloat()), height.toFloat())
-            canvas.drawRoundRect(box, radius, radius, paint)
-            paint.shader = null
-        }
-        val x = width * threshold.coerceIn(0f, 100f) / 100f
-        paint.color = Color.WHITE; paint.strokeWidth = 5 * density
-        canvas.drawLine(x, 0f, x, height.toFloat(), paint)
-        paint.color = Color.rgb(16, 44, 64); paint.strokeWidth = 2 * density
-        canvas.drawLine(x, 0f, x, height.toFloat(), paint)
-    }
-}
-
-// BLOQUE 3: CONEXIÓN TLS ENTRE PANEL Y NODO
-
-class NetworkEngine(private val security: DeviceSecurity,
-    private val state: (String, Boolean) -> Unit, private val message: (JSONObject) -> Unit) {
-    // state recibe cambios del enlace; message recibe JSON. Los callbacks llegan desde hilos de red.
-    // Al reiniciar la conexión, descarta el trabajo pendiente de la sesión anterior.
-    private val generation = AtomicLong()
-    private val writer = Executors.newSingleThreadExecutor()
-    private val writeLock = Any()
-    @Volatile private var socket: SSLSocket? = null
-    @Volatile private var listener: ServerSocket? = null
-    @Volatile private var output: DataOutputStream? = null
-    @Volatile var connected = false
-        private set
-    private fun announce(g: Long, text: String, ready: Boolean = false) {
-        if (generation.get() == g) { connected = ready; state(text, ready) }
-    }
-    fun startNode(port: Int, token: String) {
-        stop()
-        val g = generation.get()
-        Thread({
-            var server: SSLServerSocket? = null
-            try {
-                server = security.serverContext().serverSocketFactory.createServerSocket() as SSLServerSocket
-                server.reuseAddress = true
-                server.enabledProtocols = arrayOf("TLSv1.2")
-                server.bind(InetSocketAddress(port))
-                if (generation.get() != g) return@Thread
-                listener = server
-                announce(g, "Sensor listo · esperando al otro teléfono")
-                while (generation.get() == g) {
-                    val peer = server.accept() as SSLSocket
-                    if (generation.get() != g) { peer.close(); break }
-                    socket = peer
-                    try {
-                        peer.soTimeout = 8_000
-                        peer.enabledProtocols = arrayOf("TLSv1.2")
-                        peer.startHandshake()
-                        val input = DataInputStream(peer.inputStream)
-                        val out = DataOutputStream(peer.outputStream)
-                        // El token se recibe dentro de TLS y se valida antes de aceptar comandos.
-                        val hello = Frames.read(input)
-                        require(hello.optString("type") == "hello" && MessageDigest.isEqual(
-                            hello.optString("token").toByteArray(), token.toByteArray())) { "Emparejamiento rechazado" }
-                        Frames.write(out, JSONObject().put("type", "welcome").put("version", 1))
-                        synchronized(writeLock) { output = out }
-                        peer.soTimeout = 15_000
-                        announce(g, "✅ Conectado con el otro teléfono", true)
-                        readLoop(g, input)
-                    } catch (e: Exception) {
-                        android.util.Log.w("LumenLink", "Sesión del nodo rechazada", e)
-                        announce(g, "El otro teléfono se desconectó")
-                    } finally {
-                        runCatching { peer.close() }
-                        synchronized(writeLock) { if (socket === peer) { output = null; socket = null } }
-                    }
-                }
-            } catch (e: Exception) {
-                android.util.Log.w("LumenLink", "No se pudo iniciar el nodo", e)
-                announce(g, "No se pudo encender el sensor. Inténtalo de nuevo.")
-            } finally { runCatching { server?.close() } }
-        }, "lumenlink-server").start()
-    }
-    fun startController(pair: Pairing) {
-        stop()
-        val g = generation.get()
-        Thread({
-            while (generation.get() == g) {
-                var peer: SSLSocket? = null
-                try {
-                    announce(g, "Conectando…")
-                    peer = security.clientContext(pair.fingerprint).socketFactory.createSocket() as SSLSocket
-                    if (generation.get() != g) break
-                    socket = peer
-                    peer.connect(InetSocketAddress(pair.host, pair.port), 5_000)
-                    peer.soTimeout = 8_000
-                    peer.enabledProtocols = arrayOf("TLSv1.2")
-                    peer.startHandshake()
-                    val input = DataInputStream(peer.inputStream)
-                    val out = DataOutputStream(peer.outputStream)
-                    Frames.write(out, JSONObject().put("type", "hello").put("token", pair.token))
-                    require(Frames.read(input).optString("type") == "welcome")
-                    synchronized(writeLock) { output = out }
-                    peer.soTimeout = 15_000
-                    announce(g, "✅ Conectado con el sensor", true)
-                    readLoop(g, input)
-                } catch (e: Exception) {
-                    android.util.Log.w("LumenLink", "No se pudo conectar el panel", e)
-                    announce(g, "Sin conexión. Reintentando… Revisa que los dos teléfonos estén en el mismo Wi-Fi.")
-                } finally {
-                    runCatching { peer?.close() }
-                    synchronized(writeLock) { if (socket === peer) { output = null; socket = null } }
-                }
-                if (generation.get() == g) try { Thread.sleep(3_000) } catch (_: InterruptedException) { break }
-            }
-        }, "lumenlink-client").start()
-    }
-    private fun readLoop(g: Long, input: DataInputStream) {
-        while (generation.get() == g) {
-            val value = Frames.read(input)
-            if (generation.get() == g) message(value)
-        }
-    }
-    fun send(value: JSONObject) {
-        val g = generation.get()
-        val target = socket ?: return
-        writer.execute {
-            if (generation.get() != g || socket !== target) return@execute
-            try { synchronized(writeLock) { output?.let { Frames.write(it, value) } } }
-            catch (_: Exception) { runCatching { target.close() } }
-        }
-    }
-    fun stop() {
-        generation.incrementAndGet()
-        connected = false
-        // Cierra primero el socket para liberar una escritura que pueda estar bloqueada.
-        runCatching { socket?.close() }
-        runCatching { listener?.close() }
-        synchronized(writeLock) { output = null }
-        socket = null; listener = null
-        state("Desconectado", false)
-    }
-    fun dispose() { stop(); writer.shutdownNow() }
-}
-
-// BLOQUE 4: CUENTAS E HISTORIAL CIFRADO (SQLITE)
-
-class AppDatabase(context: Context, private val security: DeviceSecurity) : SQLiteOpenHelper(context, "lumenlink.db", null, 1) {
-    override fun onCreate(db: SQLiteDatabase) {
-        db.execSQL("CREATE TABLE users(name TEXT PRIMARY KEY, salt BLOB NOT NULL, hash BLOB NOT NULL, failures INTEGER NOT NULL DEFAULT 0, locked_until INTEGER NOT NULL DEFAULT 0)")
-        db.execSQL("CREATE TABLE readings(owner TEXT NOT NULL, id TEXT NOT NULL, at INTEGER NOT NULL, source TEXT NOT NULL, payload TEXT NOT NULL, PRIMARY KEY(owner,id,source))")
-        db.execSQL("CREATE INDEX readings_owner_time ON readings(owner,at DESC)")
-    }
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
-    @Synchronized fun register(user: String, password: String): String {
-        if (!PasswordHasher.validUser(user)) return "Usuario: usa entre 3 y 32 letras, números, punto, guion o guion bajo."
-        if (!PasswordHasher.validPassword(password)) return "La contraseña debe tener entre 6 y 128 caracteres."
-        val salt = PasswordHasher.salt()
-        val chars = password.toCharArray()
-        val hash = try { PasswordHasher.hash(chars, salt) } finally { chars.fill('\u0000') }
-        val values = ContentValues().apply { put("name", user); put("salt", salt); put("hash", hash) }
-        return if (writableDatabase.insertWithOnConflict("users", null, values, SQLiteDatabase.CONFLICT_IGNORE) == -1L)
-            "El usuario ya existe." else "OK"
-    }
-    @Synchronized fun login(user: String, password: String): Boolean {
-        readableDatabase.query("users", null, "name=?", arrayOf(user), null, null, null).use { c ->
-            if (!c.moveToFirst()) {
-                // También deriva una clave si el usuario no existe para reducir diferencias de tiempo.
-                val chars = password.take(128).toCharArray()
-                try { PasswordHasher.hash(chars, ByteArray(16)) } finally { chars.fill('\u0000') }
-                return false
-            }
-            val now = System.currentTimeMillis()
-            if (c.getLong(c.getColumnIndexOrThrow("locked_until")) > now) return false
-            val chars = password.take(128).toCharArray()
-            val valid = try { password.length <= 128 && PasswordHasher.matches(chars,
-                c.getBlob(c.getColumnIndexOrThrow("salt")), c.getBlob(c.getColumnIndexOrThrow("hash"))) }
-                finally { chars.fill('\u0000') }
-            val failures = if (valid) 0 else c.getInt(c.getColumnIndexOrThrow("failures")) + 1
-            val values = ContentValues().apply {
-                put("failures", if (failures >= 5) 0 else failures)
-                put("locked_until", if (!valid && failures >= 5) now + 30_000 else 0)
-            }
-            writableDatabase.update("users", values, "name=?", arrayOf(user))
-            return valid
-        }
-    }
-    @Synchronized fun save(user: String, r: Reading, source: String) {
-        val values = ContentValues().apply {
-            put("owner", user); put("id", r.id); put("at", r.at); put("source", source)
-            put("payload", security.encrypt(r.json().toString()))
-        }
-        // Conserva el ID original para que una sincronización repetida no duplique la lectura.
-        writableDatabase.insertWithOnConflict("readings", null, values, SQLiteDatabase.CONFLICT_IGNORE)
-        // Conserva las 2.000 lecturas más recientes de cada usuario.
-        writableDatabase.execSQL("DELETE FROM readings WHERE owner=? AND rowid NOT IN (SELECT rowid FROM readings WHERE owner=? ORDER BY at DESC LIMIT 2000)", arrayOf(user, user))
-    }
-    @Synchronized fun list(user: String, source: String? = null, limit: Int = 100, offset: Int = 0): List<Reading> {
-        require(limit in 1..100 && offset in 0..2000)
-        val where = if (source == null) "owner=?" else "owner=? AND source=?"
-        val args = if (source == null) arrayOf(user) else arrayOf(user, source)
-        return readableDatabase.query("readings", arrayOf("payload"), where, args, null, null,
-            "at DESC, id ASC", "$offset,$limit").use { c ->
-            buildList { while (c.moveToNext()) add(Reading.parse(JSONObject(security.decrypt(c.getString(0))))) }
-        }
-    }
-    @Synchronized fun count(user: String): Int = readableDatabase.rawQuery("SELECT COUNT(*) FROM readings WHERE owner=?", arrayOf(user)).use {
-        it.moveToFirst(); it.getInt(0)
-    }
-}
-
-// BLOQUE 5: CLAVES (ANDROID KEYSTORE)
-
-class DeviceSecurity {
-    private val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-    // Solo crea las claves si no existen: conserva el acceso a las lecturas guardadas anteriormente.
-    init {
-        if (!store.containsAlias("lumenlink-storage")) {
-            KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore").apply {
-                init(KeyGenParameterSpec.Builder("lumenlink-storage", KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
-                    .setBlockModes(KeyProperties.BLOCK_MODE_GCM).setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
-                    .setKeySize(256).build())
-            }.generateKey()
-        }
-        if (!store.containsAlias("lumenlink-node-tls-v1")) {
-            KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore").apply {
-                initialize(KeyGenParameterSpec.Builder("lumenlink-node-tls-v1", KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY)
-                    // Los mensajes de la aplicación se cifran con TLS, no con RSA directo.
-                    .setDigests(KeyProperties.DIGEST_NONE, KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512)
-                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE, KeyProperties.ENCRYPTION_PADDING_RSA_PKCS1)
-                    .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1, KeyProperties.SIGNATURE_PADDING_RSA_PSS)
-                    .setKeySize(2048).setCertificateSubject(X500Principal("CN=LumenLink educational node"))
-                    .setCertificateSerialNumber(BigInteger.ONE)
-                    .setCertificateNotBefore(Date(1_577_836_800_000L))
-                    .setCertificateNotAfter(Date(2_208_988_800_000L)).build())
-            }.generateKeyPair()
-        }
-    }
-    fun encrypt(text: String): String {
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, store.getKey("lumenlink-storage", null) as SecretKey)
-        // Guarda el IV junto al texto cifrado para poder descifrar esa lectura después.
-        return Base64.encodeToString(cipher.iv + cipher.doFinal(text.toByteArray(Charsets.UTF_8)), Base64.NO_WRAP)
-    }
-    fun decrypt(text: String): String {
-        val data = Base64.decode(text, Base64.NO_WRAP)
-        require(data.size >= 28)
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.DECRYPT_MODE, store.getKey("lumenlink-storage", null) as SecretKey,
-            GCMParameterSpec(128, data.copyOfRange(0, 12)))
-        return String(cipher.doFinal(data.copyOfRange(12, data.size)), Charsets.UTF_8)
-    }
-    val pin: String get() = fingerprint(store.getCertificate("lumenlink-node-tls-v1") as X509Certificate)
-    fun serverContext(): SSLContext {
-        val keyManager = object : X509KeyManager {
-            override fun getClientAliases(keyType: String?, issuers: Array<out Principal>?): Array<String>? = null
-            override fun chooseClientAlias(keyType: Array<out String>?, issuers: Array<out Principal>?, socket: Socket?): String? = null
-            override fun getServerAliases(keyType: String?, issuers: Array<out Principal>?): Array<String>? =
-                if (keyType == "RSA") arrayOf("lumenlink-node-tls-v1") else null
-            override fun chooseServerAlias(keyType: String?, issuers: Array<out Principal>?, socket: Socket?): String? =
-                if (keyType == "RSA") "lumenlink-node-tls-v1" else null
-            override fun getCertificateChain(alias: String?): Array<X509Certificate> =
-                arrayOf(store.getCertificate("lumenlink-node-tls-v1") as X509Certificate)
-            override fun getPrivateKey(alias: String?): PrivateKey = store.getKey("lumenlink-node-tls-v1", null) as PrivateKey
-        }
-        return SSLContext.getInstance("TLSv1.2").apply { init(arrayOf<KeyManager>(keyManager), null, null) }
-    }
-    // El panel verifica la huella del nodo antes de enviar su token secreto.
-    fun clientContext(pin: String): SSLContext = SSLContext.getInstance("TLSv1.2").apply {
-        init(null, arrayOf<TrustManager>(PinnedTrust(pin)), null)
     }
 }

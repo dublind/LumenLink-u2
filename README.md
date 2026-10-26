@@ -63,16 +63,49 @@ Para las pruebas Android, conecta un emulador o dispositivo de prueba:
 
 ## Organización del proyecto
 
-El código Kotlin pasó de 13 archivos a 4: **dos de aplicación y dos de pruebas**.
-Las clases mantienen sus responsabilidades dentro de bloques comentados. Para saltar a una parte,
-abre el archivo y busca `BLOQUE` con Ctrl + F.
+Cada archivo Kotlin contiene **una sola clase y lleva su nombre**, así el nombre del archivo dice qué hay dentro.
+La carpeta `core` reúne las reglas y los datos que no dependen de Android; por eso se prueban en el computador.
 
-| Archivo | Qué contiene y por dónde empezar |
+**Pantallas y servicios Android** (`app/src/main/java/cl/ti3042/lumenlink/`)
+
+| Archivo | Qué hace |
 |---|---|
-| [MainActivity.kt](app/src/main/java/cl/ti3042/lumenlink/MainActivity.kt) | Toda la parte Android: bloque 1 pantallas, 2 gráfico, 3 red TLS, 4 SQLite y 5 claves. Conserva las clases MainActivity, TrendView, NetworkEngine, AppDatabase y DeviceSecurity. |
-| [core/Logica.kt](app/src/main/java/cl/ti3042/lumenlink/core/Logica.kt) | Bloque 1 regla de iluminación, 2 mensajes y lecturas, 3 contraseñas. Conserva LightingController, Frames, Pairing, PinnedTrust, Reading y PasswordHasher. |
-| [CoreTest.kt](app/src/test/java/cl/ti3042/lumenlink/CoreTest.kt) | Las 18 pruebas del computador, agrupadas en CoreTest, LightingControllerTest y TlsIntegrationTest. |
-| [DeviceTest.kt](app/src/androidTest/java/cl/ti3042/lumenlink/DeviceTest.kt) | Las 7 pruebas Android, agrupadas en DeviceTest y UiFlowTest. |
+| [MainActivity.kt](app/src/main/java/cl/ti3042/lumenlink/MainActivity.kt) | Pantallas: acceso, Panel, Conectar e Historial. Recibe las acciones del usuario y coordina los servicios. |
+| [NetworkEngine.kt](app/src/main/java/cl/ti3042/lumenlink/NetworkEngine.kt) | Conexión TLS entre el panel y el sensor: envía y recibe mensajes y reintenta si se corta. |
+| [AppDatabase.kt](app/src/main/java/cl/ti3042/lumenlink/AppDatabase.kt) | Base SQLite: cuentas, bloqueo tras 5 fallos y lecturas cifradas por usuario. |
+| [DeviceSecurity.kt](app/src/main/java/cl/ti3042/lumenlink/DeviceSecurity.kt) | Claves en Android Keystore: cifrado AES-GCM de las lecturas y certificado TLS del sensor. |
+| [TrendView.kt](app/src/main/java/cl/ti3042/lumenlink/TrendView.kt) | Gráfico de líneas de las últimas lecturas. |
+| [LdrBar.kt](app/src/main/java/cl/ti3042/lumenlink/LdrBar.kt) | Barra de luminosidad con la marca del umbral de oscuridad. |
+
+**Reglas y datos** (`app/src/main/java/cl/ti3042/lumenlink/core/`)
+
+| Archivo | Qué hace |
+|---|---|
+| [LightingController.kt](app/src/main/java/cl/ti3042/lumenlink/core/LightingController.kt) | Regla de la luz: cercanía O oscuridad, umbrales y modo manual. |
+| [Reading.kt](app/src/main/java/cl/ti3042/lumenlink/core/Reading.kt) | Una lectura de los sensores y su conversión a JSON. |
+| [Frames.kt](app/src/main/java/cl/ti3042/lumenlink/core/Frames.kt) | Envía cada mensaje con su longitud para leerlo completo por la red. |
+| [Pairing.kt](app/src/main/java/cl/ti3042/lumenlink/core/Pairing.kt) | El código de conexión que se copia de un teléfono al otro. |
+| [PinnedTrust.kt](app/src/main/java/cl/ti3042/lumenlink/core/PinnedTrust.kt) | Acepta solo el certificado cuya huella llegó en el código de conexión. |
+| [PasswordHasher.kt](app/src/main/java/cl/ti3042/lumenlink/core/PasswordHasher.kt) | Contraseñas con PBKDF2 y sal, y validación de usuario y contraseña. |
+| [HistoryFilter.kt](app/src/main/java/cl/ti3042/lumenlink/core/HistoryFilter.kt) | Opciones de consulta del historial (Todas, Luz ON, Luz OFF, Auto, Manual). |
+| [ReadingStats.kt](app/src/main/java/cl/ti3042/lumenlink/core/ReadingStats.kt) | Resumen del historial: promedios, mínimos, máximos y porcentajes. |
+| [EnergyCalculator.kt](app/src/main/java/cl/ti3042/lumenlink/core/EnergyCalculator.kt) | Calculadora de consumo y ahorro en kWh y pesos. |
+
+**Pruebas**
+
+| Archivo | Qué comprueba |
+|---|---|
+| [AccountsAndMessagesTest.kt](app/src/test/java/cl/ti3042/lumenlink/AccountsAndMessagesTest.kt) | Contraseñas, formato de mensajes, código de conexión y lecturas (computador). |
+| [LightingControllerTest.kt](app/src/test/java/cl/ti3042/lumenlink/LightingControllerTest.kt) | La regla automática, los umbrales y el modo manual (computador). |
+| [TlsIntegrationTest.kt](app/src/test/java/cl/ti3042/lumenlink/TlsIntegrationTest.kt) | Una conexión TLS real con certificado fijado (computador). |
+| [HistoryCalculationTest.kt](app/src/test/java/cl/ti3042/lumenlink/HistoryCalculationTest.kt) | Filtros, resumen y calculadora del historial (computador). |
+| [DeviceTest.kt](app/src/androidTest/java/cl/ti3042/lumenlink/DeviceTest.kt) | Cifrado, cuentas y conexión en un teléfono o emulador. |
+| [UiFlowTest.kt](app/src/androidTest/java/cl/ti3042/lumenlink/UiFlowTest.kt) | Recorre las pantallas reales: registro, sensor, panel, historial y salida. |
+
+**Otros archivos**
+
+| Archivo | Qué contiene |
+|---|---|
 | [AndroidManifest.xml](app/src/main/AndroidManifest.xml) | Declara la pantalla inicial, permisos de red, icono y tema de la app. |
 | [styles.xml](app/src/main/res/values/styles.xml) | Colores y apariencia general de Android. |
 | [ic_lumenlink.xml](app/src/main/res/drawable/ic_lumenlink.xml) | Icono vectorial de la ampolleta. |
@@ -103,24 +136,10 @@ Las carpetas `main`, `test` y `androidTest` se mantienen porque Android les asig
 
 ### Cómo leer el código
 
-1. Empieza por `core/Logica.kt`, bloque 1: sensores, umbrales y modo manual.
-2. Abre `MainActivity.kt`, bloque 1, y busca `loginScreen`, `dashboard` y `connection`.
-3. Sigue con los bloques de red, base de datos y claves cuando necesites entender esos servicios.
-4. Consulta `CoreTest.kt` y `DeviceTest.kt` para ver qué resultados se esperan.
-
-Los nombres de las clases existentes se conservan para mantener sus referencias. Las importaciones
-están agrupadas y explicadas; no descargan librerías, solo permiten usar sus clases por un nombre corto.
-
-### Verificación de esta reorganización
-
-Se conservaron los nombres de las clases y las 25 pruebas existentes, se agruparon las importaciones
-y se añadieron comentarios en español. El registro de pruebas ejecutadas de la versión anterior se
-mantiene al final del manual, identificado como histórico.
-
-La revisión estática comprobó la sintaxis de los cuatro archivos Kotlin y comparó las 17 declaraciones
-de clases, objetos y funciones principales con la copia anterior: conservan las mismas instrucciones,
-con Assert explícito en las pruebas. También se comprobaron los enlaces de este manual, los recursos
-de la vista previa y la estructura XML. Estas revisiones no sustituyen una compilación ni una ejecución de pruebas.
+1. Empieza por `core/LightingController.kt`: sensores, umbrales y modo manual.
+2. Abre `MainActivity.kt` y busca `loginScreen`, `dashboard`, `connection` e `history`.
+3. Sigue con `NetworkEngine.kt`, `AppDatabase.kt` y `DeviceSecurity.kt` cuando necesites entender esos servicios.
+4. Revisa las pruebas para ver qué resultados se esperan de cada clase.
 
 La compilación con Gradle no pudo completarse en este equipo: Java no está configurado en PATH y
 el Java 25 incluido en la extensión de Kotlin fue rechazado por la configuración actual. El proyecto
@@ -186,7 +205,7 @@ El segundo teléfono simula sensores y luz. El primero controla y monitorea por 
 
 ### Usuarios y funciones
 
-La lógica del proceso está separada de Android en `core/Logica.kt`, lo que permite probarla sin interfaz ni red. Cada instalación permite crear cuentas locales. Tras autenticarse, el usuario selecciona el rol del teléfono. El panel observa las condiciones de distancia e iluminación y envía órdenes; el nodo simula el proceso, ejecuta los comandos y publica su estado. Las cuentas de los dos teléfonos son independientes: la autorización del enlace se realiza mediante un token de emparejamiento, no mediante el envío de la contraseña del usuario.
+La lógica del proceso está separada de Android en la carpeta `core/`, lo que permite probarla sin interfaz ni red. Cada instalación permite crear cuentas locales. Tras autenticarse, el usuario selecciona el rol del teléfono. El panel observa las condiciones de distancia e iluminación y envía órdenes; el nodo simula el proceso, ejecuta los comandos y publica su estado. Las cuentas de los dos teléfonos son independientes: la autorización del enlace se realiza mediante un token de emparejamiento, no mediante el envío de la contraseña del usuario.
 
 Las funciones principales son registro, login, selección de rol, conexión segura, monitoreo, control manual, configuración automática, consulta de historial y sincronización. El cierre de sesión termina el enlace e invalida el token del nodo.
 
@@ -306,7 +325,7 @@ Esta matriz utiliza la guía de la Unidad 2 entregada en la conversación. La es
 | 2.1.2 App Android con conexión inalámbrica | Conexión, navegación entre pantallas y **envío de datos** | Wi-Fi con TLS 1.2 entre panel y nodo; el panel envía comandos y umbrales, y el nodo envía lecturas e historial | Conectar dos teléfonos, cambiar la luz desde el panel y confirmar en el nodo |
 | 2.1.3 Estándar ISO de seguridad IoT | Formularios con captura de datos, **cálculos**, validación y mensajes al usuario | Controles ISO/IEC 27002 aplicados en el código (ver lista más abajo); login y registro con error por campo y confirmación de contraseña; calculadora de kWh/CLP con rangos validados; umbrales validados | Ingresar datos erróneos para mostrar los mensajes y luego datos correctos para mostrar el cálculo |
 
-**Cálculos de Historial** (`core/Logica.kt`, bloque 4, probados en `HistoryCalculationTest`):
+**Cálculos de Historial** (`core/HistoryFilter.kt`, `core/ReadingStats.kt` y `core/EnergyCalculator.kt`, probados en `HistoryCalculationTest`):
 
 - Resumen: número de lecturas, distancia promedio, mínima y máxima, LDR promedio, % con luz encendida y % en automático, siempre sobre la opción de consulta seleccionada (Todas, Luz ON, Luz OFF, Auto, Manual).
 - Consumo: horas encendida al día = horas de uso × % encendida; kWh al mes = W × horas encendida × 30 / 1000; costo = kWh × tarifa; ahorro = diferencia con dejar la luz siempre encendida.
