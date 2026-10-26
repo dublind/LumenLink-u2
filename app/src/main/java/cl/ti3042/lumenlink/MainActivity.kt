@@ -1,16 +1,5 @@
 package cl.ti3042.lumenlink
 
-/**
- * MAINACTIVITY.KT: toda la parte que depende de Android, reunida en cinco bloques.
- * Busca "BLOQUE 1" para pantallas; 2 para gráfico; 3 para red; 4 para SQLite; 5 para claves.
- * Las clases conservan sus nombres y responsabilidades aunque compartan este archivo.
- * Las reglas y los datos comunes están en core/Logica.kt.
- * Guía de Kotlin: val no se reasigna; var sí; private limita el acceso; fun declara una función.
- * apply configura un objeto; use lo cierra al terminar; ? admite null; ?: proporciona una alternativa.
- * Los import permiten usar clases existentes por su nombre corto; no instalan librerías.
- */
-
-// Android: pantallas, gráficos, almacenamiento y claves del dispositivo.
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.ClipData
@@ -43,7 +32,6 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 
-// Nuestro proyecto: reglas, lecturas y formato de la conexión.
 import cl.ti3042.lumenlink.core.EnergyCalculator
 import cl.ti3042.lumenlink.core.Frames
 import cl.ti3042.lumenlink.core.HistoryFilter
@@ -55,11 +43,9 @@ import cl.ti3042.lumenlink.core.Reading
 import cl.ti3042.lumenlink.core.ReadingStats
 import cl.ti3042.lumenlink.core.fingerprint
 
-// JSON: convierte los mensajes y las lecturas a un formato intercambiable.
 import org.json.JSONArray
 import org.json.JSONObject
 
-// Java: flujos de bytes, red, fechas, certificados y trabajo en otros hilos.
 import java.io.DataInputStream
 import java.io.DataOutputStream
 import java.math.BigInteger
@@ -82,7 +68,6 @@ import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicLong
 
-// Criptografía y TLS: cifrado, contraseñas y canal de comunicación seguro.
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -95,23 +80,20 @@ import javax.net.ssl.TrustManager
 import javax.net.ssl.X509KeyManager
 import javax.security.auth.x500.X500Principal
 
-// BLOQUE 1: PANTALLAS Y COORDINACIÓN. MainActivity recibe las acciones del usuario y coordina las clases de los siguientes bloques.
+// BLOQUE 1: PANTALLAS
 
 class MainActivity : Activity() {
-    // Apariencia y tareas: handler vuelve al hilo de pantalla; io trabaja con datos en otra cola.
     private val navy = Color.rgb(16, 44, 64)
     private val teal = Color.rgb(8, 127, 140)
     private val muted = Color.rgb(82, 104, 118)
     private val handler = Handler(Looper.getMainLooper())
     private val io = Executors.newSingleThreadExecutor()
     private lateinit var security: DeviceSecurity
-    // lateinit indica que estos servicios se preparan al iniciar, antes de utilizarlos.
     private lateinit var db: AppDatabase
     private lateinit var net: NetworkEngine
     private lateinit var root: LinearLayout
     private lateinit var content: LinearLayout
     private var user: String? = null
-    // Estado de la sesión: rol del teléfono, conexión, token y última lectura confirmada.
     private var tab = "Panel"
     private var nodeMode = false
     private var nodeRunning = false
@@ -120,19 +102,15 @@ class MainActivity : Activity() {
     private var latest: Reading? = null
     private val lighting = LightingController()
     private var syncRunning = false
-    // La sincronización recorre una copia estable del historial en páginas de 100 lecturas.
     private var syncId = ""
     private var snapshot: List<Reading> = emptyList() // Solo se consulta desde la cola de trabajo de datos.
-    // Opción de consulta elegida en Historial y resumen de todas las lecturas para la calculadora.
     private var historyFilter = HistoryFilter.ALL
     private var allStats: ReadingStats? = null
-    // Secciones plegables: los ajustes y la calculadora se abren solo si el usuario los pide.
     private var showSettings = false
     private var showCalculator = false
     private var pairText = ""
     private var chosenIp = ""
     private var statusView: TextView? = null
-    // Referencias a los controles visibles; pueden ser null al cambiar de pantalla.
     private var distanceView: TextView? = null
     private var detailView: TextView? = null
     private var lightOnView: TextView? = null
@@ -145,8 +123,6 @@ class MainActivity : Activity() {
     private val ldrTrend = ArrayDeque<Float>()
     private val time = SimpleDateFormat("dd/MM HH:mm:ss", Locale("es", "CL"))
 
-    // Android llama aquí al abrir la app: prepara las claves, la base de datos y la red.
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
@@ -156,7 +132,6 @@ class MainActivity : Activity() {
             try {
                 security = DeviceSecurity()
                 db = AppDatabase(applicationContext, security)
-                // Prepara la base antes de habilitar las pantallas.
                 db.writableDatabase
                 runOnUiThread {
                     if (isDestroyed) return@runOnUiThread
@@ -178,26 +153,21 @@ class MainActivity : Activity() {
             }
         }
     }
-    // Convierte medidas de diseño a píxeles según la densidad de la pantalla.
     private fun dp(value: Int): Int = (resources.displayMetrics.density * value).toInt()
-    // Crea un fondo de color con esquinas redondeadas.
     private fun background(color: Int, radius: Int = 16) = GradientDrawable().apply {
         setColor(color); cornerRadius = dp(radius).toFloat()
     }
-    // Crea un texto reutilizable para las distintas pantallas.
     private fun text(value: String, size: Float = 16f, color: Int = navy, bold: Boolean = false) = TextView(this).apply {
         text = value; textSize = size; setTextColor(color)
         if (bold) typeface = Typeface.DEFAULT_BOLD
         setPadding(0, dp(5), 0, dp(5))
     }
-    // Agrupa controles verticalmente, opcionalmente dentro de una tarjeta blanca.
     private fun column(parent: LinearLayout, card: Boolean = false): LinearLayout = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         setPadding(dp(16), dp(12), dp(16), dp(16))
         if (card) background = background(Color.WHITE)
         parent.addView(this, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) })
     }
-    // Crea un botón y asocia la acción que se ejecutará al pulsarlo.
     private fun button(parent: LinearLayout, label: String, action: () -> Unit): Button = Button(this).apply {
         text = label; isAllCaps = false; textSize = 15f
         setTextColor(Color.WHITE); backgroundTintList = android.content.res.ColorStateList.valueOf(teal)
@@ -205,7 +175,6 @@ class MainActivity : Activity() {
         parent.addView(this, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
         setOnClickListener { action() }
     }
-    // Pone botones lado a lado en una fila; cada par es (texto, acción).
     private fun buttonRow(parent: LinearLayout, vararg items: Pair<String, () -> Unit>) {
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         items.forEachIndexed { i, (label, action) ->
@@ -217,7 +186,6 @@ class MainActivity : Activity() {
         }
         parent.addView(row, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
     }
-    // Crea un campo de entrada con su etiqueta siempre visible; secret oculta los caracteres de la contraseña.
     private fun field(parent: LinearLayout, hintText: String, secret: Boolean = false, initial: String = ""): EditText = EditText(this).apply {
         parent.addView(this@MainActivity.text(hintText, 14f, muted, true).apply { setPadding(0, dp(10), 0, 0) })
         hint = hintText; textSize = 18f; setText(initial); setTextColor(navy)
@@ -227,7 +195,6 @@ class MainActivity : Activity() {
         setPadding(dp(8), dp(10), dp(8), dp(10))
         parent.addView(this, LinearLayout.LayoutParams(-1, -2))
     }
-    // Construye el encabezado y el contenido desplazable compartidos por las pantallas.
     private fun shell(subtitle: String) {
         statusView = null; distanceView = null; detailView = null; lightOnView = null; trendView = null
         ldrView = null; ldrStateView = null; ldrBar = null; ldrTrendView = null
@@ -247,7 +214,6 @@ class MainActivity : Activity() {
         titles.addView(text("LUMENLINK", 25f, Color.WHITE, true))
         titles.addView(text(subtitle, 14f, Color.rgb(164, 220, 222)))
         header.addView(titles, LinearLayout.LayoutParams(0, -2, 1f))
-        // Con sesión iniciada, el botón Salir queda siempre a la vista en el encabezado.
         if (user != null) header.addView(Button(this).apply {
             text = "Salir"; isAllCaps = false; textSize = 15f; setTextColor(navy)
             backgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(164, 220, 222))
@@ -261,7 +227,6 @@ class MainActivity : Activity() {
         setContentView(root)
         root.requestApplyInsets()
     }
-    // Pantalla de acceso: registra cuentas locales o comprueba las credenciales.
     private fun loginScreen() {
         shell("Luz inteligente")
         val card = column(content, true)
@@ -272,7 +237,6 @@ class MainActivity : Activity() {
         val feedback = text("La contraseña debe tener al menos 6 caracteres.", 15f, muted)
         card.addView(feedback)
         val actions = mutableListOf<Button>()
-        // Valida cada campo antes de consultar la base y marca el campo con el error.
         fun invalid(register: Boolean, n: String, p: String): String? {
             name.error = null; pass.error = null; confirm.error = null
             val (target, message) = when {
@@ -286,7 +250,6 @@ class MainActivity : Activity() {
             target.error = message; target.requestFocus()
             return message
         }
-        // Consulta la base en la cola de trabajo y actualiza después la pantalla.
         fun authenticate(register: Boolean) {
             val n = name.text.toString().trim().lowercase(Locale.ROOT)
             val p = pass.text.toString()
@@ -314,12 +277,10 @@ class MainActivity : Activity() {
         actions += button(card, "Iniciar sesión") { authenticate(false) }
         actions += button(card, "Crear cuenta local") { authenticate(true) }
     }
-    // Cierra la sesión, corta la conexión y vuelve a la pantalla de acceso.
     private fun logout() {
         stopConnection(); user = null; latest = null; pairText = ""; historyFilter = HistoryFilter.ALL; allStats = null
         trend.clear(); ldrTrend.clear(); showSettings = false; showCalculator = false; loginScreen()
     }
-    // Abre la sección elegida y dibuja la barra inferior de navegación.
     private fun showTab(name: String) {
         if (user == null) return
         tab = name
@@ -342,9 +303,7 @@ class MainActivity : Activity() {
         }
         root.addView(nav)
     }
-    // Panel: primero el estado de la luz y sus botones; luego luminosidad y distancia. Los ajustes van plegados.
     private fun dashboard() {
-        // Estado de la luz en grande, con fondo ámbar cuando está encendida.
         lightOnView = text("Sin datos todavía", 20f, muted, true).also {
             it.setPadding(dp(16), dp(14), dp(16), dp(14)); it.background = background(Color.rgb(232, 238, 241), 14)
             content.addView(it, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(6) })
@@ -355,7 +314,6 @@ class MainActivity : Activity() {
         button(controls, "Automático") { command("auto") }
         controls.addView(text("En automático se enciende si hay alguien cerca o está oscuro.", 14f, muted))
         if (nodeMode) {
-            // Simulador para la demostración: dos deslizadores imitan la LDR y el ultrasónico.
             // Funciona también sin conectar el otro teléfono; cada cambio genera una lectura nueva.
             val simulation = column(content, true)
             simulation.addView(text("Simular sensores", 19f, bold = true))
@@ -366,7 +324,6 @@ class MainActivity : Activity() {
                 lighting.updateSensors(it, lighting.ldrPercent); sample()
             }
         }
-        // Luminosidad: porcentaje grande, barra con el umbral marcado y gráfico de las últimas lecturas.
         val light = column(content, true)
         light.addView(text("Luz del ambiente", 16f, muted, true))
         ldrView = text("— %", 46f, bold = true).also { light.addView(it) }
@@ -378,13 +335,11 @@ class MainActivity : Activity() {
         light.addView(scale)
         ldrTrendView = TrendView(this).apply { lineColor = LdrBar.amber; fixedRange = 0f..100f }
             .also { light.addView(it, LinearLayout.LayoutParams(-1, dp(80))) }
-        // Distancia a la persona u objeto más cercano.
         val values = column(content, true)
         values.addView(text("Distancia", 16f, muted, true))
         distanceView = text("— cm", 40f, bold = true).also { values.addView(it) }
         trendView = TrendView(this).also { values.addView(it, LinearLayout.LayoutParams(-1, dp(80))) }
         detailView = text("Conéctate en la pestaña Conectar para ver datos.", 14f, muted).also { values.addView(it) }
-        // Ajustes plegados: umbrales y valores exactos del simulador.
         val settings = column(content, true)
         button(settings, if (showSettings) "Ocultar ajustes" else "Ajustes") { showSettings = !showSettings; showTab("Panel") }
         if (showSettings) {
@@ -405,7 +360,6 @@ class MainActivity : Activity() {
         }
         renderReading()
     }
-    // Deslizador con su valor siempre visible; onChange recibe el valor elegido.
     private fun slider(parent: LinearLayout, label: String, unit: String, max: Int, initial: Double, onChange: (Double) -> Unit) {
         val title = text("$label: ${initial.toInt()} $unit", 17f, navy, true).apply { setPadding(0, dp(12), 0, 0) }
         parent.addView(title)
@@ -425,7 +379,6 @@ class MainActivity : Activity() {
             })
         }, LinearLayout.LayoutParams(-1, -2))
     }
-    // Permite elegir el rol e iniciar el nodo o emparejar el panel con su configuración.
     private fun connection() {
         val modes = column(content, true)
         modes.addView(text("¿Qué hará este teléfono?", 20f, bold = true))
@@ -479,7 +432,6 @@ class MainActivity : Activity() {
         button(card, "Desconectar") { stopConnection(); showTab("Conectar") }
         card.addView(text("Deja la app abierta en los dos teléfonos mientras los usas.", 14f, muted))
     }
-    // Al cambiar de rol, termina la sesión de red y restablece la simulación.
     private fun changeMode(node: Boolean) {
         if (nodeMode != node) {
             stopConnection(); nodeMode = node; latest = null; trend.clear(); ldrTrend.clear(); lighting.updateSensors(100.0, 80.0); lighting.enableAutomatic()
@@ -493,14 +445,12 @@ class MainActivity : Activity() {
         if (invalidateToken) token = freshToken()
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
-    // Consulta las últimas 100 lecturas, las filtra según la opción elegida y muestra un resumen simple.
     private fun history() {
         val card = column(content, true)
         card.addView(text("Historial", 22f, bold = true))
         val totalView = text("Cargando…", 15f, muted).also { card.addView(it) }
         if (!nodeMode) button(card, "Traer datos del sensor") { requestSync() }
         button(card, "Actualizar") { showTab("Historial") }
-        // Opciones de consulta: la activa se resalta en verde azulado.
         val filters = column(content, true)
         filters.addView(text("Mostrar", 16f, muted, true))
         val chips = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -513,11 +463,9 @@ class MainActivity : Activity() {
             }, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginEnd = dp(3) })
         }
         filters.addView(chips)
-        // Resumen de las lecturas seleccionadas, en pocas líneas.
         val statsCard = column(content, true)
         statsCard.addView(text("Resumen · ${historyFilter.label}", 18f, bold = true))
         val statsView = text("Calculando…", 16f).also { statsCard.addView(it) }
-        // Calculadora plegada: estima el consumo mensual a partir del % de tiempo con luz encendida.
         val calc = column(content, true)
         button(calc, if (showCalculator) "Ocultar calculadora" else "Calcular gasto de luz") { showCalculator = !showCalculator; showTab("Historial") }
         if (showCalculator) {
@@ -577,9 +525,7 @@ class MainActivity : Activity() {
             }
         }
     }
-    // Formatea un número con la cantidad de decimales indicada.
     private fun fmt(value: Double, decimals: Int): String = "%.${decimals}f".format(Locale("es", "CL"), value)
-    // El panel envía la orden; el estado de la luz se confirma con la respuesta del nodo.
     private fun command(action: String, value: Double? = null) {
         // En el teléfono sensor la orden se aplica directo, aunque no haya otro teléfono conectado.
         if (nodeMode) { applyCommand(action, value); return }
@@ -587,7 +533,6 @@ class MainActivity : Activity() {
         net.send(JSONObject().put("type", "command").put("action", action).apply { if (value != null) put("value", value) })
         toast("Comando enviado. Esperando estado confirmado del nodo.")
     }
-    // El nodo aplica la orden recibida y publica su estado actualizado.
     private fun applyCommand(action: String, value: Double?) {
         when (action) {
             "light_on" -> lighting.manualLight(true)
@@ -599,7 +544,6 @@ class MainActivity : Activity() {
         }
         sample()
     }
-    // Identifica cada mensaje: comando, lectura, continuidad o páginas del historial.
     private fun receive(value: JSONObject) {
         try {
             when (value.getString("type")) {
@@ -662,14 +606,12 @@ class MainActivity : Activity() {
             }
         } catch (_: Exception) { toast("Mensaje rechazado: formato o valores inválidos.") }
     }
-    // Inicia una sincronización con un identificador nuevo para distinguirla de las anteriores.
     private fun requestSync() {
         if (!net.connected || nodeMode) { toast("Conecta el panel al nodo para sincronizar."); return }
         if (syncRunning) { toast("La sincronización ya está en curso."); return }
         syncId = UUID.randomUUID().toString(); syncRunning = true
         net.send(JSONObject().put("type", "history_request").put("request", syncId).put("offset", 0))
     }
-    // Cada dos segundos: el nodo toma una muestra y el panel comprueba que sigue conectado.
     private val ticker = object : Runnable {
         override fun run() {
             if (user != null && nodeMode && nodeRunning) sample()
@@ -678,7 +620,6 @@ class MainActivity : Activity() {
             handler.postDelayed(this, 2_000)
         }
     }
-    // Publica el estado del simulador y guarda la misma lectura en el historial.
     private fun sample() {
         val r = lighting.reading(UUID.randomUUID().toString(), System.currentTimeMillis())
         latest = r; addTrend(r); renderReading()
@@ -689,14 +630,12 @@ class MainActivity : Activity() {
         }
         if (net.connected) net.send(JSONObject().put("type", "reading").put("data", r.json()))
     }
-    // Conserva solamente las últimas 30 distancias y luminosidades para los gráficos.
     private fun addTrend(r: Reading) {
         trend.addLast(r.distanceCm.toFloat())
         while (trend.size > 30) trend.removeFirst()
         ldrTrend.addLast(r.ldrPercent.toFloat())
         while (ldrTrend.size > 30) ldrTrend.removeFirst()
     }
-    // Actualiza los textos y el gráfico con el estado confirmado del nodo.
     private fun renderReading() {
         val r = latest ?: return
         distanceView?.text = "${"%.1f".format(Locale.ROOT, r.distanceCm)} cm"
@@ -726,17 +665,13 @@ class MainActivity : Activity() {
         trendView?.values = trend.toList()
         trendView?.invalidate()
     }
-    // Muestra un aviso breve en la pantalla.
     private fun toast(value: String) { Toast.makeText(this, value, Toast.LENGTH_LONG).show() }
-    // Busca direcciones IPv4 de interfaces activas para conectar desde el otro teléfono.
     private fun localAddresses(): List<String> = runCatching {
         NetworkInterface.getNetworkInterfaces().toList().filter { it.isUp && !it.isLoopback }
             .flatMap { it.inetAddresses.toList() }.filterIsInstance<Inet4Address>()
             .filter { !it.isLoopbackAddress && !it.isLinkLocalAddress }.mapNotNull { it.hostAddress }.distinct()
     }.getOrDefault(emptyList())
-    // Genera 16 bytes aleatorios y los representa con 32 caracteres hexadecimales.
     private fun freshToken(): String = ByteArray(16).also { SecureRandom().nextBytes(it) }.joinToString("") { "%02x".format(it) }
-    // Convierte la fecha numérica de una lectura al formato que muestra el historial.
     private fun timeFor(at: Long): String = SimpleDateFormat("dd/MM HH:mm:ss", Locale("es", "CL")).format(Date(at))
     // Esta versión funciona en primer plano; salir de la app detiene el enlace.
     override fun onStop() {
@@ -747,7 +682,6 @@ class MainActivity : Activity() {
             statusView?.text = status
         }
     }
-    // Libera las tareas, sockets y base de datos cuando Android destruye esta pantalla.
     override fun onDestroy() {
         handler.removeCallbacksAndMessages(null)
         if (::net.isInitialized) net.dispose()
@@ -757,7 +691,6 @@ class MainActivity : Activity() {
     }
     @Deprecated("Activity back navigation")
     @Suppress("DEPRECATION")
-    // El botón Atrás vuelve al panel o pide confirmar la salida si hay una sesión abierta.
     override fun onBackPressed() {
         if (user != null && tab != "Panel") showTab("Panel")
         else if (user != null) AlertDialog.Builder(this).setTitle("Salir de LumenLink")
@@ -767,16 +700,14 @@ class MainActivity : Activity() {
     }
 }
 
-// BLOQUE 2: GRÁFICO DE DISTANCIA. TrendView dibuja las últimas muestras; no modifica las reglas de iluminación.
+// BLOQUE 2: GRÁFICOS
 
 class TrendView(context: Context) : View(context) {
     var values: List<Float> = emptyList()
     var lineColor: Int = Color.rgb(8, 127, 140)
-    // fixedRange fija la escala (por ejemplo 0..100 %); marker dibuja una línea horizontal de referencia.
     var fixedRange: ClosedFloatingPointRange<Float>? = null
     var marker: Float? = null
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    // Dibuja una cuadrícula y une los valores con una línea.
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val density = resources.displayMetrics.density
@@ -801,7 +732,6 @@ class TrendView(context: Context) : View(context) {
     }
 }
 
-/** Barra horizontal de luminosidad: se llena según el % de la LDR y marca el umbral de oscuridad. */
 class LdrBar(context: Context) : View(context) {
     companion object {
         val amber: Int = Color.rgb(245, 166, 35)
@@ -811,7 +741,6 @@ class LdrBar(context: Context) : View(context) {
     var threshold: Float = 30f
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val box = android.graphics.RectF()
-    // Dibuja el fondo, el relleno degradado (oscuro → luz) y la marca del umbral.
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val density = resources.displayMetrics.density
@@ -835,9 +764,8 @@ class LdrBar(context: Context) : View(context) {
     }
 }
 
-// BLOQUE 3: CONEXIÓN ENTRE PANEL Y NODO. NetworkEngine transporta mensajes JSON sobre TLS; la lógica de las órdenes está en MainActivity.
+// BLOQUE 3: CONEXIÓN TLS ENTRE PANEL Y NODO
 
-/** Conecta un panel y un nodo mediante TLS y un token de emparejamiento. */
 class NetworkEngine(private val security: DeviceSecurity,
     private val state: (String, Boolean) -> Unit, private val message: (JSONObject) -> Unit) {
     // state recibe cambios del enlace; message recibe JSON. Los callbacks llegan desde hilos de red.
@@ -850,11 +778,9 @@ class NetworkEngine(private val security: DeviceSecurity,
     @Volatile private var output: DataOutputStream? = null
     @Volatile var connected = false
         private set
-    // Notifica el estado solo si la tarea todavía pertenece a la sesión actual.
     private fun announce(g: Long, text: String, ready: Boolean = false) {
         if (generation.get() == g) { connected = ready; state(text, ready) }
     }
-    // Abre un servidor TLS y comprueba el token antes de aceptar mensajes del panel.
     fun startNode(port: Int, token: String) {
         stop()
         val g = generation.get()
@@ -901,7 +827,6 @@ class NetworkEngine(private val security: DeviceSecurity,
             } finally { runCatching { server?.close() } }
         }, "lumenlink-server").start()
     }
-    // Conecta el panel con la huella esperada y reintenta cada 3 segundos si se pierde el enlace.
     fun startController(pair: Pairing) {
         stop()
         val g = generation.get()
@@ -932,19 +857,16 @@ class NetworkEngine(private val security: DeviceSecurity,
                     runCatching { peer?.close() }
                     synchronized(writeLock) { if (socket === peer) { output = null; socket = null } }
                 }
-                // Reintenta solo si el usuario no ha detenido la conexión.
                 if (generation.get() == g) try { Thread.sleep(3_000) } catch (_: InterruptedException) { break }
             }
         }, "lumenlink-client").start()
     }
-    // Lee mensajes completos hasta que termine la conexión o se cambie de sesión.
     private fun readLoop(g: Long, input: DataInputStream) {
         while (generation.get() == g) {
             val value = Frames.read(input)
             if (generation.get() == g) message(value)
         }
     }
-    // Envía en una cola de trabajo para mantener el orden y no bloquear la pantalla.
     fun send(value: JSONObject) {
         val g = generation.get()
         val target = socket ?: return
@@ -954,7 +876,6 @@ class NetworkEngine(private val security: DeviceSecurity,
             catch (_: Exception) { runCatching { target.close() } }
         }
     }
-    // Invalida las tareas antiguas y cierra el servidor y la conexión actual.
     fun stop() {
         generation.incrementAndGet()
         connected = false
@@ -965,24 +886,18 @@ class NetworkEngine(private val security: DeviceSecurity,
         socket = null; listener = null
         state("Desconectado", false)
     }
-    // Cierra la conexión y termina también la cola de envío.
     fun dispose() { stop(); writer.shutdownNow() }
 }
 
-// BLOQUE 4: CUENTAS E HISTORIAL EN SQLITE. AppDatabase filtra por usuario y cifra las lecturas antes de guardarlas.
+// BLOQUE 4: CUENTAS E HISTORIAL CIFRADO (SQLITE)
 
-/** Guarda cuentas y lecturas; cada consulta de historial se limita a su usuario. */
 class AppDatabase(context: Context, private val security: DeviceSecurity) : SQLiteOpenHelper(context, "lumenlink.db", null, 1) {
-    // @Synchronized impide que dos llamadas modifiquen simultáneamente estos datos.
-    // Crea las tablas de cuentas y lecturas cuando la base se abre por primera vez.
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE users(name TEXT PRIMARY KEY, salt BLOB NOT NULL, hash BLOB NOT NULL, failures INTEGER NOT NULL DEFAULT 0, locked_until INTEGER NOT NULL DEFAULT 0)")
         db.execSQL("CREATE TABLE readings(owner TEXT NOT NULL, id TEXT NOT NULL, at INTEGER NOT NULL, source TEXT NOT NULL, payload TEXT NOT NULL, PRIMARY KEY(owner,id,source))")
         db.execSQL("CREATE INDEX readings_owner_time ON readings(owner,at DESC)")
     }
-    // La base sigue en su versión 1; aquí se añadirían futuras migraciones.
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
-    // Valida los datos, deriva la contraseña con una sal y rechaza usuarios repetidos.
     @Synchronized fun register(user: String, password: String): String {
         if (!PasswordHasher.validUser(user)) return "Usuario: usa entre 3 y 32 letras, números, punto, guion o guion bajo."
         if (!PasswordHasher.validPassword(password)) return "La contraseña debe tener entre 6 y 128 caracteres."
@@ -993,7 +908,6 @@ class AppDatabase(context: Context, private val security: DeviceSecurity) : SQLi
         return if (writableDatabase.insertWithOnConflict("users", null, values, SQLiteDatabase.CONFLICT_IGNORE) == -1L)
             "El usuario ya existe." else "OK"
     }
-    // Comprueba la contraseña y aplica el bloqueo temporal después de cinco fallos.
     @Synchronized fun login(user: String, password: String): Boolean {
         readableDatabase.query("users", null, "name=?", arrayOf(user), null, null, null).use { c ->
             if (!c.moveToFirst()) {
@@ -1008,7 +922,6 @@ class AppDatabase(context: Context, private val security: DeviceSecurity) : SQLi
             val valid = try { password.length <= 128 && PasswordHasher.matches(chars,
                 c.getBlob(c.getColumnIndexOrThrow("salt")), c.getBlob(c.getColumnIndexOrThrow("hash"))) }
                 finally { chars.fill('\u0000') }
-            // Cinco fallos bloquean la cuenta durante 30 segundos.
             val failures = if (valid) 0 else c.getInt(c.getColumnIndexOrThrow("failures")) + 1
             val values = ContentValues().apply {
                 put("failures", if (failures >= 5) 0 else failures)
@@ -1018,7 +931,6 @@ class AppDatabase(context: Context, private val security: DeviceSecurity) : SQLi
             return valid
         }
     }
-    // Cifra la lectura y evita duplicarla por usuario, identificador y origen.
     @Synchronized fun save(user: String, r: Reading, source: String) {
         val values = ContentValues().apply {
             put("owner", user); put("id", r.id); put("at", r.at); put("source", source)
@@ -1029,7 +941,6 @@ class AppDatabase(context: Context, private val security: DeviceSecurity) : SQLi
         // Conserva las 2.000 lecturas más recientes de cada usuario.
         writableDatabase.execSQL("DELETE FROM readings WHERE owner=? AND rowid NOT IN (SELECT rowid FROM readings WHERE owner=? ORDER BY at DESC LIMIT 2000)", arrayOf(user, user))
     }
-    // Consulta una página del historial y descifra cada lectura antes de devolverla.
     @Synchronized fun list(user: String, source: String? = null, limit: Int = 100, offset: Int = 0): List<Reading> {
         require(limit in 1..100 && offset in 0..2000)
         val where = if (source == null) "owner=?" else "owner=? AND source=?"
@@ -1039,15 +950,13 @@ class AppDatabase(context: Context, private val security: DeviceSecurity) : SQLi
             buildList { while (c.moveToNext()) add(Reading.parse(JSONObject(security.decrypt(c.getString(0))))) }
         }
     }
-    // Cuenta los registros que pertenecen al usuario indicado.
     @Synchronized fun count(user: String): Int = readableDatabase.rawQuery("SELECT COUNT(*) FROM readings WHERE owner=?", arrayOf(user)).use {
         it.moveToFirst(); it.getInt(0)
     }
 }
 
-// BLOQUE 5: CLAVES Y CIFRADO DEL DISPOSITIVO. DeviceSecurity mantiene las claves en Android Keystore y prepara los certificados TLS.
+// BLOQUE 5: CLAVES (ANDROID KEYSTORE)
 
-/** Mantiene las claves en Android Keystore y cifra el contenido de las lecturas. */
 class DeviceSecurity {
     private val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
     // Solo crea las claves si no existen: conserva el acceso a las lecturas guardadas anteriormente.
@@ -1062,7 +971,6 @@ class DeviceSecurity {
         if (!store.containsAlias("lumenlink-node-tls-v1")) {
             KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore").apply {
                 initialize(KeyGenParameterSpec.Builder("lumenlink-node-tls-v1", KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_VERIFY)
-                    // Estos permisos permiten que Android firme el intercambio TLS.
                     // Los mensajes de la aplicación se cifran con TLS, no con RSA directo.
                     .setDigests(KeyProperties.DIGEST_NONE, KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512)
                     .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE, KeyProperties.ENCRYPTION_PADDING_RSA_PKCS1)
@@ -1074,14 +982,12 @@ class DeviceSecurity {
             }.generateKeyPair()
         }
     }
-    // Cifra el texto con AES-GCM y devuelve IV más contenido cifrado en Base64.
     fun encrypt(text: String): String {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, store.getKey("lumenlink-storage", null) as SecretKey)
         // Guarda el IV junto al texto cifrado para poder descifrar esa lectura después.
         return Base64.encodeToString(cipher.iv + cipher.doFinal(text.toByteArray(Charsets.UTF_8)), Base64.NO_WRAP)
     }
-    // Separa el IV, comprueba la integridad y recupera el texto original.
     fun decrypt(text: String): String {
         val data = Base64.decode(text, Base64.NO_WRAP)
         require(data.size >= 28)
@@ -1090,9 +996,7 @@ class DeviceSecurity {
             GCMParameterSpec(128, data.copyOfRange(0, 12)))
         return String(cipher.doFinal(data.copyOfRange(12, data.size)), Charsets.UTF_8)
     }
-    // La huella identifica el certificado público; no revela la clave privada.
     val pin: String get() = fingerprint(store.getCertificate("lumenlink-node-tls-v1") as X509Certificate)
-    // Prepara TLS con el certificado y la clave privada del nodo.
     fun serverContext(): SSLContext {
         val keyManager = object : X509KeyManager {
             override fun getClientAliases(keyType: String?, issuers: Array<out Principal>?): Array<String>? = null
@@ -1108,7 +1012,6 @@ class DeviceSecurity {
         return SSLContext.getInstance("TLSv1.2").apply { init(arrayOf<KeyManager>(keyManager), null, null) }
     }
     // El panel verifica la huella del nodo antes de enviar su token secreto.
-    // Prepara TLS para aceptar solamente el certificado cuya huella recibió el panel.
     fun clientContext(pin: String): SSLContext = SSLContext.getInstance("TLSv1.2").apply {
         init(null, arrayOf<TrustManager>(PinnedTrust(pin)), null)
     }

@@ -1,15 +1,5 @@
 package cl.ti3042.lumenlink
 
-/**
- * DEVICETEST.KT: las siete pruebas Android están reunidas en dos clases.
- * Requieren un dispositivo o emulador conectado: connectedDebugAndroidTest.
- * BLOQUE 1: cifrado, cuentas y red. BLOQUE 2: recorrido de las pantallas.
- * CountDownLatch es una señal de espera; TimeUnit expresa segundos.
- * AtomicBoolean y AtomicReference comparten datos con los hilos que reciben mensajes de red.
- * Los import solo permiten usar por nombre corto las clases de Android, JUnit y Java.
- */
-
-// Android: pantallas, gráficos, almacenamiento y claves del dispositivo.
 import android.graphics.Bitmap
 import android.util.Base64
 import android.view.View
@@ -19,24 +9,19 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 
-// AndroidX Test: acceso a la aplicación y ejecución de pruebas en Android.
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 
-// Nuestro proyecto: reglas, lecturas y formato de la conexión.
 import cl.ti3042.lumenlink.core.Pairing
 import cl.ti3042.lumenlink.core.Reading
 
-// JSON: convierte los mensajes y las lecturas a un formato intercambiable.
 import org.json.JSONObject
 
-// JUnit: marca las pruebas y comprueba sus resultados con Assert.
 import org.junit.Assert
 import org.junit.Test
 import org.junit.runner.RunWith
 
-// Java: flujos de bytes, red, fechas, certificados y trabajo en otros hilos.
 import java.io.File
 import java.net.ServerSocket
 import java.util.concurrent.CountDownLatch
@@ -44,28 +29,18 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
-// BLOQUE 1: SEGURIDAD, BASE DE DATOS Y RED. DeviceTest contiene las seis pruebas de servicios del dispositivo.
+// BLOQUE 1: SEGURIDAD, BASE DE DATOS Y RED
 
-/**
- * Comprueba cifrado, cuentas y conexión en un dispositivo o emulador Android.
- * No construye pantallas. Las pruebas de red conectan un panel y un nodo en el mismo Android.
- * DeviceSecurity, AppDatabase y NetworkEngine están en este mismo paquete: no necesitan import.
- */
 @RunWith(AndroidJUnit4::class)
 class DeviceTest {
-    // El contexto permite abrir la base de datos de la aplicación que estamos probando.
     private val contexto get() = InstrumentationRegistry.getInstrumentation().targetContext
 
-    // El puerto 0 pide uno libre al sistema. use cierra este socket al terminar.
     private fun puertoDisponible(): Int = ServerSocket(0).use { socket -> socket.localPort }
 
-    // countDown() da la señal; await() espera hasta recibirla o agotar el tiempo.
-    // Así evitamos comprobar un resultado antes de que termine la operación de red.
     private fun esperar(senal: CountDownLatch, mensaje: String, segundos: Long = 15) {
         Assert.assertTrue(mensaje, senal.await(segundos, TimeUnit.SECONDS))
     }
 
-    /** El texto se puede recuperar, cada cifrado cambia y los datos alterados se rechazan. */
     @Test
     fun cifradoProtegeLecturasYDetectaAlteraciones() {
         val seguridad = DeviceSecurity()
@@ -86,7 +61,6 @@ class DeviceTest {
         }
     }
 
-    /** Verifica acceso, aislamiento de cuentas, duplicados y almacenamiento cifrado. */
     @Test
     fun baseDeDatosSeparaUsuariosYEvitaDuplicados() {
         val db = AppDatabase(contexto, DeviceSecurity())
@@ -98,7 +72,6 @@ class DeviceTest {
             Assert.assertTrue(db.login(usuario, clave))
             Assert.assertFalse(db.login(usuario, "incorrecta"))
 
-            // Los argumentos con nombre muestran qué significa cada valor de la lectura.
             val lectura = Reading(
                 id = "unique-id",
                 at = System.currentTimeMillis(),
@@ -116,7 +89,6 @@ class DeviceTest {
             Assert.assertTrue(db.list("another_account").isEmpty())
 
             // Inspecciona el contenido guardado sin pasar por el descifrado de db.list().
-            // El ? recibe el usuario como parámetro; use cierra el cursor de la consulta.
             db.readableDatabase.rawQuery(
                 "SELECT payload FROM readings WHERE owner=?", arrayOf(usuario)
             ).use { cursor ->
@@ -124,14 +96,12 @@ class DeviceTest {
                 Assert.assertFalse(cursor.getString(0).contains("distanceCm"))
             }
         } finally {
-            // finally limpia los datos de prueba aunque una comprobación falle.
             db.writableDatabase.delete("readings", "owner=?", arrayOf(usuario))
             db.writableDatabase.delete("users", "name=?", arrayOf(usuario))
             db.close()
         }
     }
 
-    /** Tras cinco intentos incorrectos, la clave correcta tampoco permite entrar de inmediato. */
     @Test
     fun cincoClavesIncorrectasBloqueanLaCuenta() {
         val db = AppDatabase(contexto, DeviceSecurity())
@@ -150,7 +120,6 @@ class DeviceTest {
         }
     }
 
-    /** Usa el certificado real de Android Keystore y comprueba un comando de ida y vuelta. */
     @Test
     fun conexionTlsPermiteEnviarComandos() {
         val seguridad = DeviceSecurity()
@@ -160,8 +129,6 @@ class DeviceTest {
         val respuestaRecibida = CountDownLatch(1)
         val respuesta = AtomicReference<JSONObject>()
 
-        // Cada motor recibe dos funciones: una informa del estado y otra recibe mensajes.
-        // lateinit permite que la función del nodo utilice ese mismo nodo para responder.
         lateinit var nodo: NetworkEngine
         nodo = NetworkEngine(
             seguridad,
@@ -191,7 +158,6 @@ class DeviceTest {
             nodo.startNode(puerto, token)
             esperar(nodoListo, "El nodo no pudo abrir el puerto")
 
-            // 127.0.0.1 es este mismo dispositivo; pin es la huella del certificado esperado.
             val conexion = Pairing("127.0.0.1", puerto, seguridad.pin, token)
             panel.startController(conexion)
             esperar(panelConectado, "El panel no pudo establecer TLS", 20)
@@ -207,14 +173,12 @@ class DeviceTest {
         }
     }
 
-    /** Un token incorrecto o una huella distinta deben impedir la autorización. */
     @Test
     fun conexionRechazaTokenOHuellaIncorrectos() {
         val seguridad = DeviceSecurity()
         val puerto = puertoDisponible()
         val token = "a".repeat(32)
         val nodoListo = CountDownLatch(1)
-        // Se cambia la señal para esperar por separado el rechazo de cada intento.
         val rechazo = AtomicReference(CountDownLatch(1))
         val nodo = NetworkEngine(
             seguridad,
@@ -256,13 +220,11 @@ class DeviceTest {
         }
     }
 
-    /** El panel debe reconectarse automáticamente cuando vuelve el mismo nodo autorizado. */
     @Test
     fun panelSeReconectaCuandoRegresaElNodo() {
         val seguridad = DeviceSecurity()
         val puerto = puertoDisponible()
         val token = "a".repeat(32)
-        // AtomicReference permite sustituir las señales al iniciar la segunda conexión.
         val nodoListo = AtomicReference(CountDownLatch(1))
         val panelConectado = AtomicReference(CountDownLatch(1))
         val nodo = NetworkEngine(
@@ -300,17 +262,13 @@ class DeviceTest {
     }
 }
 
-// BLOQUE 2: RECORRIDO DE PANTALLAS. UiFlowTest prueba la aplicación visible con una cuenta desechable.
+// BLOQUE 2: RECORRIDO DE PANTALLAS
 
-/** Prueba las pantallas reales con una cuenta desechable. */
 @RunWith(AndroidJUnit4::class)
 class UiFlowTest {
-    // Recorre los controles de una vista y sus hijos para poder encontrar textos y botones.
     private fun views(v: View): List<View> = listOf(v) + if (v is ViewGroup)
         (0 until v.childCount).flatMap { views(v.getChildAt(it)) } else emptyList()
-    // Comienza la búsqueda desde la raíz de la pantalla de la aplicación.
     private fun all(a: MainActivity): List<View> = views(a.window.decorView)
-    // Busca un botón por el texto que ve el usuario y ejecuta su pulsación.
     private fun click(a: MainActivity, label: String) {
         all(a).filterIsInstance<Button>().first { it.text.toString() == label }.performClick()
     }
@@ -318,7 +276,6 @@ class UiFlowTest {
     private fun slide(a: MainActivity, index: Int, value: Int) {
         all(a).filterIsInstance<android.widget.SeekBar>()[index].progress = value
     }
-    // Espera un texto de la interfaz con un límite de tiempo para no avanzar demasiado pronto.
     private fun waitFor(scenario: ActivityScenario<MainActivity>, label: String, timeout: Long = 20_000) {
         val end = System.currentTimeMillis() + timeout
         while (System.currentTimeMillis() < end) {
@@ -329,7 +286,6 @@ class UiFlowTest {
         }
         Assert.fail("No se encontró el texto esperado: $label")
     }
-    // Guarda una captura de prueba con una cuenta desechable para la evidencia visual.
     private fun capture(scenario: ActivityScenario<MainActivity>, name: String) {
         // Permite capturas solo durante esta prueba; la APK mantiene su protección.
         scenario.onActivity { it.window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE) }
@@ -341,7 +297,6 @@ class UiFlowTest {
         File(directory, name).outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         bitmap.recycle()
     }
-    // Recorre registro, acceso, nodo, sensores, control manual, historial y cierre de sesión.
     @Test fun registrationLoginNodeControlAndHistory() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val account = "ui_${System.nanoTime()}"
