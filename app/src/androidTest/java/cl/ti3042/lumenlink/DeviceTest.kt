@@ -44,10 +44,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
-// ============================================================================
-// BLOQUE 1: SEGURIDAD, BASE DE DATOS Y RED
-// DeviceTest contiene las seis pruebas de servicios del dispositivo.
-// ============================================================================
+// BLOQUE 1: SEGURIDAD, BASE DE DATOS Y RED. DeviceTest contiene las seis pruebas de servicios del dispositivo.
 
 /**
  * Comprueba cifrado, cuentas y conexión en un dispositivo o emulador Android.
@@ -303,10 +300,7 @@ class DeviceTest {
     }
 }
 
-// ============================================================================
-// BLOQUE 2: RECORRIDO DE PANTALLAS
-// UiFlowTest prueba la aplicación visible con una cuenta desechable.
-// ============================================================================
+// BLOQUE 2: RECORRIDO DE PANTALLAS. UiFlowTest prueba la aplicación visible con una cuenta desechable.
 
 /** Prueba las pantallas reales con una cuenta desechable. */
 @RunWith(AndroidJUnit4::class)

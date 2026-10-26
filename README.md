@@ -298,6 +298,22 @@ Esta matriz utiliza la guía de la Unidad 2 entregada en la conversación. La es
 | Demostración en clase | Guion incluido | Ejecutar el recorrido en dos equipos |
 | Entrega de código GitHub | Repositorio dublind/LumenLink-u2 y archivo de texto con el enlace | Comprobar acceso del docente y cargar el TXT en AAI |
 
+### Rúbrica de la Evaluación Sumativa 2 (60 puntos)
+
+| Criterio (Destacado, 20 pts) | Qué pide | Dónde está en la app | Cómo demostrarlo |
+|---|---|---|---|
+| 2.1.1 Herramientas y estándar de diseño | Barra de navegación con 3 ítems que permitan **listar y procesar** información | Barra inferior con 4 ítems (Panel, Conectar, Historial, Ayuda). Historial **lista** las lecturas y las **procesa**: filtros, resumen calculado y calculadora de consumo | Recorrer las pestañas; en Historial elegir un filtro y mostrar el resumen |
+| 2.1.2 App Android con conexión inalámbrica | Conexión, navegación entre pantallas y **envío de datos** | Wi-Fi con TLS 1.2 entre panel y nodo; el panel envía comandos y umbrales, y el nodo envía lecturas e historial | Conectar dos teléfonos, cambiar la luz desde el panel y confirmar en el nodo |
+| 2.1.3 Estándar ISO de seguridad IoT | Formularios con captura de datos, **cálculos**, validación y mensajes al usuario | Tarjeta «Seguridad · ISO/IEC 27400 e ISO/IEC 27002» en Ayuda; login y registro con error por campo y confirmación de contraseña; calculadora de kWh/CLP con rangos validados; umbrales validados | Ingresar datos erróneos para mostrar los mensajes y luego datos correctos para mostrar el cálculo |
+
+**Cálculos de Historial** (`core/Logica.kt`, bloque 4, probados en `HistoryCalculationTest`):
+
+- Resumen: número de lecturas, distancia promedio, mínima y máxima, LDR promedio, % con luz encendida y % en automático, siempre sobre la opción de consulta seleccionada (Todas, Luz ON, Luz OFF, Auto, Manual).
+- Consumo: horas encendida al día = horas de uso × % encendida; kWh al mes = W × horas encendida × 30 / 1000; costo = kWh × tarifa; ahorro = diferencia con dejar la luz siempre encendida.
+- Ejemplo verificado: 10 W, 12 h al día, 50 % encendida y 200 CLP/kWh dan 1,8 kWh y $360 al mes.
+
+**Controles ISO/IEC 27002 aplicados:** 5.15, 5.17 y 8.5 (acceso y autenticación: PBKDF2 y bloqueo tras 5 fallos), 8.24 (criptografía: AES-256-GCM con Android Keystore), 8.20 y 8.21 (redes: TLS 1.2 con certificado fijado y token), y 8.28 (validación de entradas y SQL parametrizado). Las medidas de privacidad del dispositivo siguen ISO/IEC 27400. El prototipo aplica estos controles, pero no tiene certificación.
+
 La guía enumera SQLite, Firebase y APIs como opciones de almacenamiento. Esta implementación elige SQLite y datos remotos del nodo; no implementa las tres opciones simultáneamente. Confirma esta interpretación con el docente si su pauta exige una fuente adicional.
 
 ### Pruebas manuales en dos teléfonos

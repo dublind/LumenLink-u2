@@ -1,7 +1,7 @@
 package cl.ti3042.lumenlink
 
 /**
- * CORETEST.KT: las 18 pruebas JVM están reunidas aquí, conservando sus tres clases.
+ * CORETEST.KT: las 22 pruebas JVM están reunidas aquí, en cuatro clases.
  * Se ejecutan en el computador con testDebugUnitTest; no necesitan un emulador.
  * @Test identifica una prueba. Assert.assertTrue exige verdadero y assertFalse exige falso.
  * Assert.assertEquals compara resultados; assertThrows comprueba que una operación sea rechazada.
@@ -9,12 +9,15 @@ package cl.ti3042.lumenlink
  */
 
 // Nuestro proyecto: reglas, lecturas y formato de la conexión.
+import cl.ti3042.lumenlink.core.EnergyCalculator
 import cl.ti3042.lumenlink.core.Frames
+import cl.ti3042.lumenlink.core.HistoryFilter
 import cl.ti3042.lumenlink.core.LightingController
 import cl.ti3042.lumenlink.core.Pairing
 import cl.ti3042.lumenlink.core.PasswordHasher
 import cl.ti3042.lumenlink.core.PinnedTrust
 import cl.ti3042.lumenlink.core.Reading
+import cl.ti3042.lumenlink.core.ReadingStats
 import cl.ti3042.lumenlink.core.fingerprint
 
 // JSON: convierte los mensajes y las lecturas a un formato intercambiable.
@@ -47,10 +50,7 @@ import javax.net.ssl.SSLServerSocket
 import javax.net.ssl.SSLSocket
 import javax.net.ssl.TrustManager
 
-// ============================================================================
-// BLOQUE 1: CUENTAS Y FORMATO DE DATOS
-// CoreTest verifica las contraseñas y los mensajes.
-// ============================================================================
+// BLOQUE 1: CUENTAS Y FORMATO DE DATOS. CoreTest verifica las contraseñas y los mensajes.
 
 class CoreTest {
     // Una contraseña válida coincide con su derivado; una incorrecta debe rechazarse.
@@ -127,10 +127,7 @@ class CoreTest {
     }
 }
 
-// ============================================================================
-// BLOQUE 2: REGLA AUTOMÁTICA Y MODO MANUAL
-// LightingControllerTest comprueba los sensores y sus límites.
-// ============================================================================
+// BLOQUE 2: REGLA AUTOMÁTICA Y MODO MANUAL. LightingControllerTest comprueba los sensores y sus límites.
 
 class LightingControllerTest {
     // Comprueba las cuatro combinaciones de cerca/lejos y oscuro/iluminado.
@@ -208,10 +205,7 @@ class LightingControllerTest {
     }
 }
 
-// ============================================================================
-// BLOQUE 3: TRANSPORTE TLS REAL
-// TlsIntegrationTest crea un certificado temporal e intercambia mensajes.
-// ============================================================================
+// BLOQUE 3: TRANSPORTE TLS REAL. TlsIntegrationTest crea un certificado temporal e intercambia mensajes.
 
 /** Intercambia mensajes TLS reales en la misma máquina para verificar el transporte. */
 class TlsIntegrationTest {
@@ -275,5 +269,53 @@ class TlsIntegrationTest {
             }
             Assert.assertEquals("TLSv1.2", future.get(15, TimeUnit.SECONDS))
         } finally { server.close(); executor.shutdownNow() }
+    }
+}
+
+// BLOQUE 4: CONSULTA Y CÁLCULOS DEL HISTORIAL. HistoryCalculationTest comprueba filtros, promedios y la estimación de consumo.
+
+class HistoryCalculationTest {
+    // Crea una lectura de prueba con los valores que interesan a cada caso.
+    private fun r(distance: Double, ldr: Double, on: Boolean, auto: Boolean) =
+        Reading("id-$distance-$ldr-$on-$auto", 1L, distance, ldr, on, auto, 30.0, 30.0)
+    private val rows = listOf(r(10.0, 80.0, true, true), r(100.0, 80.0, false, true),
+        r(50.0, 20.0, true, false), r(200.0, 60.0, false, false))
+
+    // Cada opción de consulta devuelve solo las lecturas que le corresponden.
+    @Test fun filtersSelectMatchingReadings() {
+        Assert.assertEquals(4, rows.count(HistoryFilter.ALL::matches))
+        Assert.assertEquals(2, rows.count(HistoryFilter.LIGHT_ON::matches))
+        Assert.assertEquals(2, rows.count(HistoryFilter.LIGHT_OFF::matches))
+        Assert.assertEquals(2, rows.count(HistoryFilter.AUTOMATIC::matches))
+        Assert.assertEquals(2, rows.count(HistoryFilter.MANUAL::matches))
+    }
+    // Promedios, extremos y porcentajes calculados sobre las cuatro lecturas.
+    @Test fun statsSummarizeReadings() {
+        val s = ReadingStats.of(rows)!!
+        Assert.assertEquals(4, s.count)
+        Assert.assertEquals(90.0, s.avgDistanceCm, 0.001)
+        Assert.assertEquals(10.0, s.minDistanceCm, 0.001)
+        Assert.assertEquals(200.0, s.maxDistanceCm, 0.001)
+        Assert.assertEquals(60.0, s.avgLdrPercent, 0.001)
+        Assert.assertEquals(50.0, s.lightOnPercent, 0.001)
+        Assert.assertEquals(50.0, s.automaticPercent, 0.001)
+        Assert.assertNull(ReadingStats.of(emptyList()))
+    }
+    // 10 W, 12 h al día y 50 % encendida: 6 h × 10 W × 30 días = 1,8 kWh; a 200 CLP son 360 CLP.
+    @Test fun energyEstimateMatchesHandCalculation() {
+        val e = EnergyCalculator.estimate(50.0, 10.0, 12.0, 200.0)
+        Assert.assertEquals(6.0, e.hoursOnPerDay, 0.001)
+        Assert.assertEquals(1.8, e.kwhPerMonth, 0.001)
+        Assert.assertEquals(360.0, e.costPerMonthClp, 0.001)
+        Assert.assertEquals(1.8, e.savedKwhPerMonth, 0.001)
+        Assert.assertEquals(360.0, e.savedClpPerMonth, 0.001)
+    }
+    // El formulario rechaza valores vacíos o fuera de rango con un mensaje para el usuario.
+    @Test fun energyFormRejectsInvalidInput() {
+        Assert.assertNull(EnergyCalculator.validate(10.0, 12.0, 200.0))
+        Assert.assertTrue(EnergyCalculator.validate(null, 12.0, 200.0)!!.startsWith("Potencia"))
+        Assert.assertTrue(EnergyCalculator.validate(10.0, 25.0, 200.0)!!.startsWith("Horas"))
+        Assert.assertTrue(EnergyCalculator.validate(10.0, 12.0, 0.0)!!.startsWith("Tarifa"))
+        Assert.assertThrows(IllegalArgumentException::class.java) { EnergyCalculator.estimate(50.0, 0.0, 12.0, 200.0) }
     }
 }

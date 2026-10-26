@@ -1,7 +1,7 @@
 package cl.ti3042.lumenlink.core
 
 /**
- * LOGICA.KT: reglas y formatos compartidos, reunidos en tres bloques.
+ * LOGICA.KT: reglas, formatos y cálculos compartidos, reunidos en cuatro bloques.
  * No utiliza pantallas ni Android Keystore: estas clases se pueden probar en la JVM.
  * class crea objetos con estado; object declara una única instancia; data class representa datos.
  * require rechaza entradas inválidas. En la regla, || significa O y <= incluye el umbral.
@@ -24,10 +24,7 @@ import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.PBEKeySpec
 import javax.net.ssl.X509TrustManager
 
-// ============================================================================
-// BLOQUE 1: REGLA DE LA LUZ
-// LightingController decide el encendido a partir de distancia, iluminación y modo manual.
-// ============================================================================
+// BLOQUE 1: REGLA DE LA LUZ. LightingController decide el encendido a partir de distancia, iluminación y modo manual.
 
 /** Controla la luz con distancia en cm e iluminación relativa de la LDR. */
 class LightingController {
@@ -77,10 +74,7 @@ class LightingController {
     fun reading(id: String, at: Long) = Reading(id, at, distanceCm, ldrPercent, lightOn, automatic, thresholdCm, ldrThresholdPercent)
 }
 
-// ============================================================================
-// BLOQUE 2: MENSAJES, EMPAREJAMIENTO Y LECTURAS
-// Frames delimita mensajes; Pairing empareja; PinnedTrust verifica el certificado; Reading representa sensores.
-// ============================================================================
+// BLOQUE 2: MENSAJES, EMPAREJAMIENTO Y LECTURAS. Frames delimita mensajes; Pairing empareja; PinnedTrust verifica el certificado; Reading representa sensores.
 
 // Cada mensaje lleva su longitud porque TCP puede dividir o juntar los datos.
 object Frames {
@@ -164,10 +158,7 @@ data class Reading(val id: String, val at: Long, val distanceCm: Double, val ldr
     }
 }
 
-// ============================================================================
-// BLOQUE 3: PROTECCIÓN DE CONTRASEÑAS
-// PasswordHasher deriva contraseñas con PBKDF2 y valida las entradas de las cuentas.
-// ============================================================================
+// BLOQUE 3: PROTECCIÓN DE CONTRASEÑAS. PasswordHasher deriva contraseñas con PBKDF2 y valida las entradas de las cuentas.
 
 /** Guarda derivados de contraseña; no guarda la contraseña original. */
 object PasswordHasher {
@@ -187,4 +178,58 @@ object PasswordHasher {
     fun validUser(value: String): Boolean = value.matches(Regex("[a-zA-Z0-9._-]{3,32}"))
     // Acepta contraseñas de 12 a 128 caracteres.
     fun validPassword(value: String): Boolean = value.length in 12..128
+}
+
+// BLOQUE 4: CONSULTA Y CÁLCULOS DEL HISTORIAL. HistoryFilter selecciona lecturas; ReadingStats las resume; EnergyCalculator estima consumo y ahorro.
+
+/** Opciones de consulta del historial que el usuario elige en la pantalla. */
+enum class HistoryFilter(val label: String) {
+    ALL("Todas"), LIGHT_ON("Luz ON"), LIGHT_OFF("Luz OFF"), AUTOMATIC("Auto"), MANUAL("Manual");
+    // Indica si una lectura pertenece a la opción seleccionada.
+    fun matches(r: Reading): Boolean = when (this) {
+        ALL -> true
+        LIGHT_ON -> r.lightOn
+        LIGHT_OFF -> !r.lightOn
+        AUTOMATIC -> r.automatic
+        MANUAL -> !r.automatic
+    }
+}
+
+/** Resumen numérico de un grupo de lecturas: promedios, extremos y porcentajes. */
+data class ReadingStats(val count: Int, val avgDistanceCm: Double, val minDistanceCm: Double, val maxDistanceCm: Double,
+    val avgLdrPercent: Double, val lightOnPercent: Double, val automaticPercent: Double) {
+    companion object {
+        // Devuelve null si no hay lecturas, porque un promedio de cero elementos no existe.
+        fun of(rows: List<Reading>): ReadingStats? {
+            if (rows.isEmpty()) return null
+            val n = rows.size.toDouble()
+            return ReadingStats(rows.size, rows.sumOf { it.distanceCm } / n, rows.minOf { it.distanceCm },
+                rows.maxOf { it.distanceCm }, rows.sumOf { it.ldrPercent } / n,
+                rows.count { it.lightOn } * 100.0 / n, rows.count { it.automatic } * 100.0 / n)
+        }
+    }
+}
+
+/** Estima el consumo mensual de la ampolleta según el porcentaje de tiempo encendida. */
+object EnergyCalculator {
+    const val DAYS_PER_MONTH = 30
+    // Resultado del cálculo: horas encendida, energía, costo y ahorro frente a dejarla siempre encendida.
+    data class Estimate(val hoursOnPerDay: Double, val kwhPerMonth: Double, val costPerMonthClp: Double,
+        val savedKwhPerMonth: Double, val savedClpPerMonth: Double)
+    // Valida cada dato del formulario con un mensaje que se muestra al usuario.
+    fun validate(watts: Double?, hoursPerDay: Double?, tariffClp: Double?): String? = when {
+        watts == null || !watts.isFinite() || watts !in 1.0..500.0 -> "Potencia: ingresa entre 1 y 500 W."
+        hoursPerDay == null || !hoursPerDay.isFinite() || hoursPerDay !in 1.0..24.0 -> "Horas de uso: ingresa entre 1 y 24 horas al día."
+        tariffClp == null || !tariffClp.isFinite() || tariffClp !in 1.0..2000.0 -> "Tarifa: ingresa entre 1 y 2.000 CLP por kWh."
+        else -> null
+    }
+    // kWh = W × horas encendida × 30 días / 1000; el costo multiplica esa energía por la tarifa.
+    fun estimate(lightOnPercent: Double, watts: Double, hoursPerDay: Double, tariffClp: Double): Estimate {
+        require(lightOnPercent.isFinite() && lightOnPercent in 0.0..100.0) { "Porcentaje encendida inválido" }
+        validate(watts, hoursPerDay, tariffClp)?.let { throw IllegalArgumentException(it) }
+        val hoursOn = hoursPerDay * lightOnPercent / 100.0
+        val kwh = watts * hoursOn * DAYS_PER_MONTH / 1000.0
+        val alwaysOnKwh = watts * hoursPerDay * DAYS_PER_MONTH / 1000.0
+        return Estimate(hoursOn, kwh, kwh * tariffClp, alwaysOnKwh - kwh, (alwaysOnKwh - kwh) * tariffClp)
+    }
 }

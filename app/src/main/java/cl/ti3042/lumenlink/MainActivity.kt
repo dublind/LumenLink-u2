@@ -44,12 +44,15 @@ import android.widget.TextView
 import android.widget.Toast
 
 // Nuestro proyecto: reglas, lecturas y formato de la conexión.
+import cl.ti3042.lumenlink.core.EnergyCalculator
 import cl.ti3042.lumenlink.core.Frames
+import cl.ti3042.lumenlink.core.HistoryFilter
 import cl.ti3042.lumenlink.core.LightingController
 import cl.ti3042.lumenlink.core.Pairing
 import cl.ti3042.lumenlink.core.PasswordHasher
 import cl.ti3042.lumenlink.core.PinnedTrust
 import cl.ti3042.lumenlink.core.Reading
+import cl.ti3042.lumenlink.core.ReadingStats
 import cl.ti3042.lumenlink.core.fingerprint
 
 // JSON: convierte los mensajes y las lecturas a un formato intercambiable.
@@ -92,10 +95,7 @@ import javax.net.ssl.TrustManager
 import javax.net.ssl.X509KeyManager
 import javax.security.auth.x500.X500Principal
 
-// ============================================================================
-// BLOQUE 1: PANTALLAS Y COORDINACIÓN
-// MainActivity recibe las acciones del usuario y coordina las clases de los siguientes bloques.
-// ============================================================================
+// BLOQUE 1: PANTALLAS Y COORDINACIÓN. MainActivity recibe las acciones del usuario y coordina las clases de los siguientes bloques.
 
 class MainActivity : Activity() {
     // Apariencia y tareas: handler vuelve al hilo de pantalla; io trabaja con datos en otra cola.
@@ -123,6 +123,9 @@ class MainActivity : Activity() {
     // La sincronización recorre una copia estable del historial en páginas de 100 lecturas.
     private var syncId = ""
     private var snapshot: List<Reading> = emptyList() // Solo se consulta desde la cola de trabajo de datos.
+    // Opción de consulta elegida en Historial y resumen de todas las lecturas para la calculadora.
+    private var historyFilter = HistoryFilter.ALL
+    private var allStats: ReadingStats? = null
     private var pairText = ""
     private var chosenIp = ""
     private var statusView: TextView? = null
@@ -235,13 +238,30 @@ class MainActivity : Activity() {
         card.addView(text("Monitorea distancia y luz ambiental, y controla la iluminación desde otro teléfono Android.", color = muted))
         val name = field(card, "Usuario")
         val pass = field(card, "Contraseña", true)
+        val confirm = field(card, "Repetir contraseña · solo al crear cuenta", true)
         val feedback = text("Crea una cuenta local en cada teléfono. Usa una contraseña de 12 a 128 caracteres.", 14f, muted)
         card.addView(feedback)
         val actions = mutableListOf<Button>()
+        // Valida cada campo antes de consultar la base y marca el campo con el error.
+        fun invalid(register: Boolean, n: String, p: String): String? {
+            name.error = null; pass.error = null; confirm.error = null
+            val (target, message) = when {
+                n.isEmpty() -> name to "Ingresa tu usuario."
+                !PasswordHasher.validUser(n) -> name to "Usuario: usa entre 3 y 32 letras, números, punto, guion o guion bajo."
+                p.isEmpty() -> pass to "Ingresa tu contraseña."
+                register && !PasswordHasher.validPassword(p) -> pass to "La contraseña debe tener entre 12 y 128 caracteres."
+                register && confirm.text.toString() != p -> confirm to "Las contraseñas no coinciden."
+                else -> return null
+            }
+            target.error = message; target.requestFocus()
+            return message
+        }
         // Consulta la base en la cola de trabajo y actualiza después la pantalla.
         fun authenticate(register: Boolean) {
             val n = name.text.toString().trim().lowercase(Locale.ROOT)
             val p = pass.text.toString()
+            invalid(register, n, p)?.let { feedback.text = it; feedback.setTextColor(Color.rgb(176, 32, 32)); return }
+            feedback.setTextColor(muted)
             actions.forEach { it.isEnabled = false }
             feedback.text = "Validando…"
             io.execute {
@@ -252,10 +272,11 @@ class MainActivity : Activity() {
                 runOnUiThread {
                     if (isDestroyed) return@runOnUiThread
                     actions.forEach { it.isEnabled = true }
-                    if (result == "LOGIN") { user = n; pass.text.clear(); showTab("Panel") }
+                    if (result == "LOGIN") { user = n; pass.text.clear(); confirm.text.clear(); toast("Bienvenido, $n."); showTab("Panel") }
                     else {
                         feedback.text = if (result == "OK") "Cuenta creada. Ahora inicia sesión." else result
-                        if (result == "OK") pass.text.clear()
+                        feedback.setTextColor(if (result == "OK") teal else Color.rgb(176, 32, 32))
+                        if (result == "OK") { pass.text.clear(); confirm.text.clear() }
                     }
                 }
             }
@@ -429,35 +450,113 @@ class MainActivity : Activity() {
         if (invalidateToken) token = freshToken()
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
-    // Consulta las últimas 100 lecturas del usuario sin bloquear la interfaz.
+    // Consulta las últimas 100 lecturas, las filtra según la opción elegida y calcula su resumen.
     private fun history() {
         val card = column(content, true)
         card.addView(text("Historial de lecturas", 22f, bold = true))
-        card.addView(text("Datos cifrados en SQLite · hasta 2.000 registros por cuenta. Se muestran las 100 lecturas más recientes.", 14f, muted))
+        card.addView(text("Datos cifrados en SQLite · hasta 2.000 registros por cuenta. Se consultan las 100 lecturas más recientes.", 14f, muted))
         if (!nodeMode) button(card, "Sincronizar historial del nodo") { requestSync() }
         button(card, "Actualizar lista") { showTab("Historial") }
-        val result = text("Cargando…", 14f, muted)
-        card.addView(result)
+        // Barra de opciones de consulta: la opción activa se resalta en verde azulado.
+        val filters = column(content, true)
+        filters.addView(text("Consultar lecturas por", 14f, muted, true))
+        val chips = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        for (option in HistoryFilter.values()) {
+            chips.addView(Button(this).apply {
+                text = option.label; isAllCaps = false; textSize = 11f; minimumWidth = 0; minWidth = 0; setPadding(0, 0, 0, 0)
+                setTextColor(if (option == historyFilter) Color.WHITE else navy)
+                backgroundTintList = android.content.res.ColorStateList.valueOf(if (option == historyFilter) teal else Color.rgb(226, 234, 238))
+                setOnClickListener { historyFilter = option; showTab("Historial") }
+            }, LinearLayout.LayoutParams(0, dp(44), 1f).apply { marginEnd = dp(3) })
+        }
+        filters.addView(chips)
+        // Resumen calculado de las lecturas seleccionadas.
+        val statsCard = column(content, true)
+        statsCard.addView(text("Resumen calculado · ${historyFilter.label}", 18f, bold = true))
+        val statsView = text("Calculando…", 14f, muted).also { statsCard.addView(it) }
+        // Formulario de cálculo: estima el consumo mensual a partir del % de tiempo con luz encendida.
+        val calc = column(content, true)
+        calc.addView(text("Calculadora de consumo y ahorro", 18f, bold = true))
+        calc.addView(text("Usa el % de lecturas con luz encendida de todo el historial consultado.", 13f, muted))
+        val watts = field(calc, "Potencia de la ampolleta en W (1 a 500)", initial = "9")
+        val hours = field(calc, "Horas de uso al día (1 a 24)", initial = "12")
+        val tariff = field(calc, "Tarifa en CLP por kWh (1 a 2.000)", initial = "200")
+        listOf(watts, hours, tariff).forEach { it.inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL }
+        val calcResult = text("Completa los datos y pulsa Calcular.", 14f, muted)
+        button(calc, "Calcular consumo") {
+            val w = watts.text.toString().replace(',', '.').toDoubleOrNull()
+            val h = hours.text.toString().replace(',', '.').toDoubleOrNull()
+            val t = tariff.text.toString().replace(',', '.').toDoubleOrNull()
+            watts.error = null; hours.error = null; tariff.error = null
+            val error = EnergyCalculator.validate(w, h, t)
+            val onPercent = allStats?.lightOnPercent
+            when {
+                error != null -> {
+                    val target = when { error.startsWith("Potencia") -> watts; error.startsWith("Horas") -> hours; else -> tariff }
+                    target.error = error; target.requestFocus(); toast(error)
+                }
+                onPercent == null -> toast("Aún no hay lecturas para calcular. Inicia un nodo o conecta el panel.")
+                else -> {
+                    val e = EnergyCalculator.estimate(onPercent, w!!, h!!, t!!)
+                    calcResult.setTextColor(navy)
+                    calcResult.text = "Luz encendida: ${fmt(onPercent, 1)} % de las lecturas\n" +
+                        "Horas encendida al día: ${fmt(e.hoursOnPerDay, 1)} h\n" +
+                        "Consumo mensual: ${fmt(e.kwhPerMonth, 2)} kWh · \$${fmt(e.costPerMonthClp, 0)} CLP\n" +
+                        "Ahorro vs. siempre encendida: ${fmt(e.savedKwhPerMonth, 2)} kWh · \$${fmt(e.savedClpPerMonth, 0)} CLP al mes"
+                    toast("Cálculo realizado.")
+                }
+            }
+        }
+        calc.addView(calcResult)
+        val listCard = column(content, true)
+        listCard.addView(text("Lecturas · ${historyFilter.label}", 18f, bold = true))
+        val result = text("Cargando…", 14f, muted).also { listCard.addView(it) }
         val owner = user ?: return
+        val filter = historyFilter
         io.execute {
-            val value = runCatching {
+            val loaded = runCatching {
                 val rows = db.list(owner)
-                "${db.count(owner)} registros guardados\n\n" + if (rows.isEmpty()) "Aún no hay lecturas. Inicia un nodo o conecta el panel."
-                else rows.joinToString("\n\n") { "${timeFor(it.at)} · ${"%.1f".format(Locale.ROOT, it.distanceCm)} cm\nLDR ${"%.0f".format(Locale.ROOT, it.ldrPercent)} % · Luz ${if (it.lightOn) "ON" else "OFF"} · ${if (it.automatic) "AUTO" else "MANUAL"}" }
-            }.getOrDefault("No se pudo leer el historial cifrado.")
-            runOnUiThread { if (user == owner && tab == "Historial" && result.isAttachedToWindow) result.text = value }
+                Triple(db.count(owner), rows, rows.filter(filter::matches))
+            }
+            runOnUiThread {
+                if (user != owner || tab != "Historial" || !result.isAttachedToWindow) return@runOnUiThread
+                val (total, rows, selected) = loaded.getOrElse {
+                    result.text = "No se pudo leer el historial cifrado."; statsView.text = "Sin datos."; return@runOnUiThread
+                }
+                allStats = ReadingStats.of(rows)
+                val s = ReadingStats.of(selected)
+                statsView.text = if (s == null) "No hay lecturas para esta opción." else
+                    "${s.count} de ${rows.size} lecturas consultadas ($total guardadas)\n" +
+                    "Distancia promedio: ${fmt(s.avgDistanceCm, 1)} cm · mín ${fmt(s.minDistanceCm, 1)} · máx ${fmt(s.maxDistanceCm, 1)}\n" +
+                    "LDR promedio: ${fmt(s.avgLdrPercent, 0)} %\n" +
+                    "Luz encendida: ${fmt(s.lightOnPercent, 1)} % · Automático: ${fmt(s.automaticPercent, 1)} %"
+                result.text = if (rows.isEmpty()) "Aún no hay lecturas. Inicia un nodo o conecta el panel."
+                else if (selected.isEmpty()) "Ninguna lectura coincide con «${filter.label}»."
+                else selected.joinToString("\n\n") { "${timeFor(it.at)} · ${fmt(it.distanceCm, 1)} cm\nLDR ${fmt(it.ldrPercent, 0)} % · Luz ${if (it.lightOn) "ON" else "OFF"} · ${if (it.automatic) "AUTO" else "MANUAL"}" }
+            }
         }
     }
+    // Formatea un número con la cantidad de decimales indicada.
+    private fun fmt(value: Double, decimals: Int): String = "%.${decimals}f".format(Locale("es", "CL"), value)
     // Muestra las instrucciones de demostración y permite cerrar la sesión.
     private fun help() {
         val card = column(content, true)
         card.addView(text("Preparar la demostración", 22f, bold = true))
         card.addView(text("1. Instala LumenLink en dos Android 8 o posteriores.\n\n2. Crea una cuenta local e inicia sesión en cada teléfono.\n\n3. Conéctalos a la misma red Wi-Fi. En el segundo teléfono elige Nodo, revisa su IPv4 e inícialo.\n\n4. Transfiere su configuración al Panel y conecta.\n\n5. Observa la distancia y el nivel de iluminación LDR. Prueba cercanía y oscuridad por separado y juntas. Confirma la luz en el Nodo.\n\n6. Interrumpe Wi-Fi, deja generar datos al Nodo y restablece la red. El Panel intentará reconectar y sincronizar.\n\n7. Revisa el historial y explica las medidas de seguridad.", 15f))
-        card.addView(text("Seguridad", 18f, bold = true))
-        card.addView(text("Contraseñas derivadas con PBKDF2, datos locales cifrados con AES-GCM y claves en Android Keystore. Comunicación TLS 1.2 con certificado fijado y token aleatorio. No incluye certificación ISO ni control industrial real.", 14f, muted))
         button(card, "Cerrar sesión") {
-            stopConnection(); user = null; latest = null; pairText = ""; trend.clear(); loginScreen()
+            stopConnection(); user = null; latest = null; pairText = ""; historyFilter = HistoryFilter.ALL; allStats = null; trend.clear(); loginScreen()
         }
+        // Controles de seguridad aplicados, relacionados con la norma IoT y los controles de ISO/IEC 27002.
+        val iso = column(content, true)
+        iso.addView(text("Seguridad · ISO/IEC 27400 e ISO/IEC 27002", 18f, bold = true))
+        iso.addView(text("Controles implementados en la aplicación según los lineamientos de seguridad y privacidad IoT:", 14f, muted))
+        iso.addView(text(
+            "• Control de acceso y autenticación (27002 5.15, 5.17, 8.5): cuenta local, contraseña de 12 a 128 caracteres derivada con PBKDF2-SHA256 (210.000 iteraciones) y bloqueo de 30 s tras 5 intentos fallidos.\n\n" +
+            "• Uso de criptografía (27002 8.24): lecturas cifradas con AES-256-GCM; claves guardadas en Android Keystore, nunca en el código.\n\n" +
+            "• Seguridad de las comunicaciones (27002 8.20, 8.21): TLS 1.2 entre panel y nodo, certificado fijado por huella SHA-256 y token aleatorio de 128 bits; sin tráfico en texto plano.\n\n" +
+            "• Validación de entradas (27002 8.28): formularios con rangos, mensajes rechazados si no cumplen el formato y consultas SQL parametrizadas.\n\n" +
+            "• Privacidad del dispositivo IoT (27400): datos separados por usuario, sin copias de seguridad automáticas, capturas de pantalla bloqueadas y portapapeles marcado como sensible.", 14f))
+        iso.addView(text("Prototipo académico: aplica los controles, pero no cuenta con certificación ni auditoría formal.", 12f, muted))
     }
     // El panel envía la orden; el estado de la luz se confirma con la respuesta del nodo.
     private fun command(action: String, value: Double? = null) {
@@ -631,10 +730,7 @@ class MainActivity : Activity() {
     }
 }
 
-// ============================================================================
-// BLOQUE 2: GRÁFICO DE DISTANCIA
-// TrendView dibuja las últimas muestras; no modifica las reglas de iluminación.
-// ============================================================================
+// BLOQUE 2: GRÁFICO DE DISTANCIA. TrendView dibuja las últimas muestras; no modifica las reglas de iluminación.
 
 class TrendView(context: Context) : View(context) {
     var values: List<Float> = emptyList()
@@ -660,10 +756,7 @@ class TrendView(context: Context) : View(context) {
     }
 }
 
-// ============================================================================
-// BLOQUE 3: CONEXIÓN ENTRE PANEL Y NODO
-// NetworkEngine transporta mensajes JSON sobre TLS; la lógica de las órdenes está en MainActivity.
-// ============================================================================
+// BLOQUE 3: CONEXIÓN ENTRE PANEL Y NODO. NetworkEngine transporta mensajes JSON sobre TLS; la lógica de las órdenes está en MainActivity.
 
 /** Conecta un panel y un nodo mediante TLS y un token de emparejamiento. */
 class NetworkEngine(private val security: DeviceSecurity,
@@ -797,10 +890,7 @@ class NetworkEngine(private val security: DeviceSecurity,
     fun dispose() { stop(); writer.shutdownNow() }
 }
 
-// ============================================================================
-// BLOQUE 4: CUENTAS E HISTORIAL EN SQLITE
-// AppDatabase filtra por usuario y cifra las lecturas antes de guardarlas.
-// ============================================================================
+// BLOQUE 4: CUENTAS E HISTORIAL EN SQLITE. AppDatabase filtra por usuario y cifra las lecturas antes de guardarlas.
 
 /** Guarda cuentas y lecturas; cada consulta de historial se limita a su usuario. */
 class AppDatabase(context: Context, private val security: DeviceSecurity) : SQLiteOpenHelper(context, "lumenlink.db", null, 1) {
@@ -876,10 +966,7 @@ class AppDatabase(context: Context, private val security: DeviceSecurity) : SQLi
     }
 }
 
-// ============================================================================
-// BLOQUE 5: CLAVES Y CIFRADO DEL DISPOSITIVO
-// DeviceSecurity mantiene las claves en Android Keystore y prepara los certificados TLS.
-// ============================================================================
+// BLOQUE 5: CLAVES Y CIFRADO DEL DISPOSITIVO. DeviceSecurity mantiene las claves en Android Keystore y prepara los certificados TLS.
 
 /** Mantiene las claves en Android Keystore y cifra el contenido de las lecturas. */
 class DeviceSecurity {
