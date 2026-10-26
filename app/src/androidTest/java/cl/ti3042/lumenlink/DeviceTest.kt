@@ -166,7 +166,7 @@ class DeviceTest {
         nodo = NetworkEngine(
             seguridad,
             state = { estado, _ ->
-                if (estado.contains("Nodo listo")) nodoListo.countDown()
+                if (estado.contains("Sensor listo")) nodoListo.countDown()
             },
             message = { mensaje ->
                 if (mensaje.optString("action") == "light_on") {
@@ -219,8 +219,8 @@ class DeviceTest {
         val nodo = NetworkEngine(
             seguridad,
             state = { estado, _ ->
-                if (estado.contains("Nodo listo")) nodoListo.countDown()
-                if (estado.contains("Panel desconectado")) rechazo.get().countDown()
+                if (estado.contains("Sensor listo")) nodoListo.countDown()
+                if (estado.contains("El otro teléfono se desconectó")) rechazo.get().countDown()
             },
             message = {} // En esta prueba no necesitamos recibir mensajes.
         )
@@ -268,7 +268,7 @@ class DeviceTest {
         val nodo = NetworkEngine(
             seguridad,
             state = { estado, _ ->
-                if (estado.contains("Nodo listo")) nodoListo.get().countDown()
+                if (estado.contains("Sensor listo")) nodoListo.get().countDown()
             },
             message = {}
         )
@@ -314,6 +314,10 @@ class UiFlowTest {
     private fun click(a: MainActivity, label: String) {
         all(a).filterIsInstance<Button>().first { it.text.toString() == label }.performClick()
     }
+    // Mueve un deslizador del simulador: 0 es la luz del ambiente y 1 la distancia.
+    private fun slide(a: MainActivity, index: Int, value: Int) {
+        all(a).filterIsInstance<android.widget.SeekBar>()[index].progress = value
+    }
     // Espera un texto de la interfaz con un límite de tiempo para no avanzar demasiado pronto.
     private fun waitFor(scenario: ActivityScenario<MainActivity>, label: String, timeout: Long = 20_000) {
         val end = System.currentTimeMillis() + timeout
@@ -346,7 +350,7 @@ class UiFlowTest {
             capture(scenario, "01-acceso.png")
             scenario.onActivity { a ->
                 val fields = all(a).filterIsInstance<EditText>()
-                fields[0].setText(account); fields[1].setText("Una clave segura de prueba")
+                fields[0].setText(account); fields[1].setText("Una clave segura de prueba"); fields[2].setText("Una clave segura de prueba")
                 click(a, "Crear cuenta local")
             }
             waitFor(scenario, "Cuenta creada")
@@ -354,26 +358,26 @@ class UiFlowTest {
                 all(a).filterIsInstance<EditText>()[1].setText("Una clave segura de prueba")
                 click(a, "Iniciar sesión")
             }
-            waitFor(scenario, "DISTANCIA ULTRASÓNICA SIMULADA")
+            waitFor(scenario, "Luz del ambiente")
             scenario.onActivity { click(it, "Conectar") }
-            scenario.onActivity { click(it, "Usar como nodo IoT simulado") }
+            scenario.onActivity { click(it, "Ser el sensor") }
             scenario.onActivity { a ->
                 all(a).filterIsInstance<EditText>().first().setText("127.0.0.1")
-                click(a, "Iniciar nodo y generar configuración")
+                click(a, "Encender sensor")
             }
-            waitFor(scenario, "Nodo listo")
+            waitFor(scenario, "Sensor listo")
             scenario.onActivity { click(it, "Panel") }
             waitFor(scenario, "Última lectura:")
             waitFor(scenario, "LUZ APAGADA · Automático")
-            scenario.onActivity { click(it, "LDR: simular sombra (10 %)") }
+            scenario.onActivity { slide(it, 0, 10) }
             waitFor(scenario, "LUZ ENCENDIDA · Automático")
-            scenario.onActivity { click(it, "LDR: simular luz (80 %)") }
+            scenario.onActivity { slide(it, 0, 80) }
             waitFor(scenario, "LUZ APAGADA · Automático")
-            scenario.onActivity { click(it, "Ultrasónico: objeto cerca (10 cm)") }
+            scenario.onActivity { slide(it, 1, 10) }
             waitFor(scenario, "LUZ ENCENDIDA · Automático")
-            scenario.onActivity { click(it, "Ultrasónico: objeto lejos (100 cm)") }
+            scenario.onActivity { slide(it, 1, 100) }
             waitFor(scenario, "LUZ APAGADA · Automático")
-            scenario.onActivity { click(it, "Encender luz · manual") }
+            scenario.onActivity { click(it, "Encender") }
             waitFor(scenario, "LUZ ENCENDIDA · Manual")
             capture(scenario, "02-panel.png")
             scenario.onActivity { a ->
@@ -385,7 +389,7 @@ class UiFlowTest {
             waitFor(scenario, "registros guardados")
             capture(scenario, "03-historial.png")
             scenario.onActivity { a ->
-                click(a, "Ayuda"); click(a, "Cerrar sesión")
+                click(a, "Salir")
             }
             waitFor(scenario, "Crear cuenta local")
         }

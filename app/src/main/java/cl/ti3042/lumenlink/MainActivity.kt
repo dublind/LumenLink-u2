@@ -126,6 +126,9 @@ class MainActivity : Activity() {
     // Opción de consulta elegida en Historial y resumen de todas las lecturas para la calculadora.
     private var historyFilter = HistoryFilter.ALL
     private var allStats: ReadingStats? = null
+    // Secciones plegables: los ajustes y la calculadora se abren solo si el usuario los pide.
+    private var showSettings = false
+    private var showCalculator = false
     private var pairText = ""
     private var chosenIp = ""
     private var statusView: TextView? = null
@@ -202,9 +205,22 @@ class MainActivity : Activity() {
         parent.addView(this, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
         setOnClickListener { action() }
     }
-    // Crea un campo de entrada; secret oculta los caracteres de la contraseña.
+    // Pone botones lado a lado en una fila; cada par es (texto, acción).
+    private fun buttonRow(parent: LinearLayout, vararg items: Pair<String, () -> Unit>) {
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        items.forEachIndexed { i, (label, action) ->
+            row.addView(Button(this).apply {
+                text = label; isAllCaps = false; textSize = 15f; setTextColor(Color.WHITE); minHeight = dp(52)
+                backgroundTintList = android.content.res.ColorStateList.valueOf(teal)
+                setOnClickListener { action() }
+            }, LinearLayout.LayoutParams(0, -2, 1f).apply { if (i > 0) marginStart = dp(8) })
+        }
+        parent.addView(row, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(6) })
+    }
+    // Crea un campo de entrada con su etiqueta siempre visible; secret oculta los caracteres de la contraseña.
     private fun field(parent: LinearLayout, hintText: String, secret: Boolean = false, initial: String = ""): EditText = EditText(this).apply {
-        hint = hintText; textSize = 16f; setText(initial); setTextColor(navy)
+        parent.addView(this@MainActivity.text(hintText, 14f, muted, true).apply { setPadding(0, dp(10), 0, 0) })
+        hint = hintText; textSize = 18f; setText(initial); setTextColor(navy)
         inputType = if (secret) InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
             else InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
         filters = arrayOf(InputFilter.LengthFilter(if (secret) 128 else 256))
@@ -224,10 +240,19 @@ class MainActivity : Activity() {
             insets
         }
         val header = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; setBackgroundColor(navy); setPadding(dp(22), dp(18), dp(22), dp(16))
+            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL
+            setBackgroundColor(navy); setPadding(dp(22), dp(14), dp(14), dp(12))
         }
-        header.addView(text("LUMENLINK", 25f, Color.WHITE, true))
-        header.addView(text(subtitle, 13f, Color.rgb(164, 220, 222)))
+        val titles = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        titles.addView(text("LUMENLINK", 25f, Color.WHITE, true))
+        titles.addView(text(subtitle, 14f, Color.rgb(164, 220, 222)))
+        header.addView(titles, LinearLayout.LayoutParams(0, -2, 1f))
+        // Con sesión iniciada, el botón Salir queda siempre a la vista en el encabezado.
+        if (user != null) header.addView(Button(this).apply {
+            text = "Salir"; isAllCaps = false; textSize = 15f; setTextColor(navy)
+            backgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(164, 220, 222))
+            setOnClickListener { logout() }
+        }, LinearLayout.LayoutParams(-2, dp(48)))
         root.addView(header)
         val scroll = ScrollView(this).apply { isFillViewport = true }
         content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(14), dp(18), dp(14), dp(18)) }
@@ -238,14 +263,13 @@ class MainActivity : Activity() {
     }
     // Pantalla de acceso: registra cuentas locales o comprueba las credenciales.
     private fun loginScreen() {
-        shell("TI3042 · Unidad 2 · Aplicación Android")
+        shell("Luz inteligente")
         val card = column(content, true)
-        card.addView(text("Luz inteligente por presencia", 25f, bold = true))
-        card.addView(text("Monitorea distancia y luz ambiental, y controla la iluminación desde otro teléfono Android.", color = muted))
+        card.addView(text("Bienvenido", 25f, bold = true))
         val name = field(card, "Usuario")
         val pass = field(card, "Contraseña", true)
-        val confirm = field(card, "Repetir contraseña · solo al crear cuenta", true)
-        val feedback = text("Crea una cuenta local en cada teléfono. Usa una contraseña de 6 a 128 caracteres.", 14f, muted)
+        val confirm = field(card, "Repetir contraseña (solo para crear cuenta)", true)
+        val feedback = text("La contraseña debe tener al menos 6 caracteres.", 15f, muted)
         card.addView(feedback)
         val actions = mutableListOf<Button>()
         // Valida cada campo antes de consultar la base y marca el campo con el error.
@@ -289,134 +313,133 @@ class MainActivity : Activity() {
         }
         actions += button(card, "Iniciar sesión") { authenticate(false) }
         actions += button(card, "Crear cuenta local") { authenticate(true) }
-        val note = column(content)
-        note.addView(text("Datos simulados, conexión real", 16f, bold = true))
-        note.addView(text("Un teléfono es el panel y el otro es el nodo IoT simulado. No se requiere Arduino para esta unidad.", 14f, muted))
+    }
+    // Cierra la sesión, corta la conexión y vuelve a la pantalla de acceso.
+    private fun logout() {
+        stopConnection(); user = null; latest = null; pairText = ""; historyFilter = HistoryFilter.ALL; allStats = null
+        trend.clear(); ldrTrend.clear(); showSettings = false; showCalculator = false; loginScreen()
     }
     // Abre la sección elegida y dibuja la barra inferior de navegación.
     private fun showTab(name: String) {
         if (user == null) return
         tab = name
-        shell("${if (nodeMode) "NODO SIMULADO" else "PANEL DE CONTROL"} · ${user}")
+        shell("${if (nodeMode) "Sensor" else "Control"} · ${user}")
         when (name) {
-            "Panel" -> dashboard()
             "Conectar" -> connection()
             "Historial" -> history()
-            else -> help()
+            else -> dashboard()
         }
         val nav = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setBackgroundColor(Color.WHITE) }
-        for (label in listOf("Panel", "Conectar", "Historial", "Ayuda")) {
+        for (label in listOf("Panel", "Conectar", "Historial")) {
             val b = Button(this).apply {
-                text = label; isAllCaps = false; textSize = 12f; minimumWidth = 0; minWidth = 0
+                text = label; isAllCaps = false; textSize = 16f; minimumWidth = 0; minWidth = 0
+                if (label == name) typeface = Typeface.DEFAULT_BOLD
                 setPadding(0, 0, 0, 0); setTextColor(if (label == name) teal else muted)
                 backgroundTintList = android.content.res.ColorStateList.valueOf(Color.WHITE)
                 setOnClickListener { showTab(label) }
             }
-            nav.addView(b, LinearLayout.LayoutParams(0, dp(56), 1f))
+            nav.addView(b, LinearLayout.LayoutParams(0, dp(60), 1f))
         }
         root.addView(nav)
     }
-    // Muestra sensores, gráfico, umbrales y botones de control. El nodo añade su simulador.
+    // Panel: primero el estado de la luz y sus botones; luego luminosidad y distancia. Los ajustes van plegados.
     private fun dashboard() {
-        val state = column(content, true)
-        state.addView(text("Estado de la conexión", 14f, muted))
-        statusView = text(status, 16f, bold = true).also { state.addView(it) }
-        // Tarjeta de luminosidad: porcentaje grande, barra con el umbral marcado y su propio gráfico.
+        // Estado de la luz en grande, con fondo ámbar cuando está encendida.
+        lightOnView = text("Sin datos todavía", 20f, muted, true).also {
+            it.setPadding(dp(16), dp(14), dp(16), dp(14)); it.background = background(Color.rgb(232, 238, 241), 14)
+            content.addView(it, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(6) })
+        }
+        statusView = text(status, 14f, muted).also { content.addView(it, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(10) }) }
+        val controls = column(content, true)
+        buttonRow(controls, "Encender" to { command("light_on") }, "Apagar" to { command("light_off") })
+        button(controls, "Automático") { command("auto") }
+        controls.addView(text("En automático se enciende si hay alguien cerca o está oscuro.", 14f, muted))
+        if (nodeMode) {
+            // Simulador para la demostración: dos deslizadores imitan la LDR y el ultrasónico.
+            // Funciona también sin conectar el otro teléfono; cada cambio genera una lectura nueva.
+            val simulation = column(content, true)
+            simulation.addView(text("Simular sensores", 19f, bold = true))
+            slider(simulation, "☀️ Luz del ambiente", "%", 100, lighting.ldrPercent) {
+                lighting.updateSensors(lighting.distanceCm, it); sample()
+            }
+            slider(simulation, "📏 Distancia de la persona", "cm", 300, lighting.distanceCm) {
+                lighting.updateSensors(it, lighting.ldrPercent); sample()
+            }
+        }
+        // Luminosidad: porcentaje grande, barra con el umbral marcado y gráfico de las últimas lecturas.
         val light = column(content, true)
-        light.addView(text("LUMINOSIDAD · SENSOR LDR", 12f, muted, true))
+        light.addView(text("Luz del ambiente", 16f, muted, true))
         ldrView = text("— %", 46f, bold = true).also { light.addView(it) }
-        ldrStateView = text("Sin lecturas de la LDR", 15f, muted, true).also { light.addView(it) }
+        ldrStateView = text("Esperando lecturas", 17f, muted, true).also { light.addView(it) }
         ldrBar = LdrBar(this).also { light.addView(it, LinearLayout.LayoutParams(-1, dp(34)).apply { topMargin = dp(6) }) }
         val scale = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        scale.addView(text("0 % oscuro", 12f, muted), LinearLayout.LayoutParams(0, -2, 1f))
-        scale.addView(text("100 % luz", 12f, muted).apply { gravity = Gravity.END }, LinearLayout.LayoutParams(0, -2, 1f))
+        scale.addView(text("Oscuro", 14f, muted), LinearLayout.LayoutParams(0, -2, 1f))
+        scale.addView(text("Mucha luz", 14f, muted).apply { gravity = Gravity.END }, LinearLayout.LayoutParams(0, -2, 1f))
         light.addView(scale)
         ldrTrendView = TrendView(this).apply { lineColor = LdrBar.amber; fixedRange = 0f..100f }
-            .also { light.addView(it, LinearLayout.LayoutParams(-1, dp(90))) }
-        light.addView(text("Luminosidad · últimas 30 muestras · la línea azul es el umbral de oscuridad", 12f, muted))
+            .also { light.addView(it, LinearLayout.LayoutParams(-1, dp(80))) }
+        // Distancia a la persona u objeto más cercano.
         val values = column(content, true)
-        values.addView(text("DISTANCIA ULTRASÓNICA SIMULADA", 12f, muted, true))
-        distanceView = text("— cm", 46f, bold = true).also { values.addView(it) }
-        detailView = text("Conecta un nodo para recibir el ultrasónico y la LDR.", 14f, muted).also { values.addView(it) }
-        // Estado de la luz destacado justo bajo la conexión, con fondo ámbar cuando está encendida.
-        lightOnView = text("Sin estado confirmado", 16f, muted, true).also {
-            it.setPadding(dp(12), dp(10), dp(12), dp(10)); it.background = background(Color.rgb(232, 238, 241), 10)
-            content.addView(it, 1, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) })
-        }
-        trendView = TrendView(this).also { values.addView(it, LinearLayout.LayoutParams(-1, dp(110))) }
-        values.addView(text("Distancia · últimas 30 muestras recibidas", 12f, muted))
-        val controls = column(content, true)
-        controls.addView(text("Control de iluminación", 21f, bold = true))
-        controls.addView(text("Automático: luz encendida si hay un objeto cercano O la LDR detecta oscuridad.", 14f, muted))
-        button(controls, "Encender luz · manual") { command("light_on") }
-        button(controls, "Apagar luz · manual") { command("light_off") }
-        button(controls, "Activar modo automático") { command("auto") }
-        controls.addView(text("Distancia de activación · entre 5 y 200 cm", 14f, muted))
-        val limit = field(controls, "Umbral en centímetros", initial = (latest?.thresholdCm ?: lighting.thresholdCm).toString())
-        limit.inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
-        button(controls, "Aplicar umbral") {
-            val value = limit.text.toString().replace(',', '.').toDoubleOrNull()
-            if (value == null || !value.isFinite() || value !in 5.0..200.0) toast("Ingresa un valor entre 5 y 200 cm.")
-            else command("set_threshold", value)
-        }
-        controls.addView(text("Umbral de oscuridad LDR · de 0 a 100 %", 14f, muted))
-        val ldrLimit = field(controls, "Umbral LDR en porcentaje", initial = (latest?.ldrThresholdPercent ?: lighting.ldrThresholdPercent).toString())
-        ldrLimit.inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
-        button(controls, "Aplicar umbral LDR") {
-            val value = ldrLimit.text.toString().replace(',', '.').toDoubleOrNull()
-            if (value == null || !value.isFinite() || value !in 0.0..100.0) toast("Ingresa un valor entre 0 y 100 %.")
-            else command("set_ldr_threshold", value)
-        }
-        if (nodeMode) {
-            val simulation = column(content, true)
-            simulation.addView(text("Simular los dos sensores", 19f, bold = true))
-            simulation.addView(text("Modifica los sensores del nodo y observa la respuesta automática. Las lecturas se envían cada 2 segundos.", 14f, muted))
-            button(simulation, "Ultrasónico: objeto cerca (10 cm)") {
-                lighting.updateSensors(10.0, lighting.ldrPercent); if (nodeRunning) sample()
+        values.addView(text("Distancia", 16f, muted, true))
+        distanceView = text("— cm", 40f, bold = true).also { values.addView(it) }
+        trendView = TrendView(this).also { values.addView(it, LinearLayout.LayoutParams(-1, dp(80))) }
+        detailView = text("Conéctate en la pestaña Conectar para ver datos.", 14f, muted).also { values.addView(it) }
+        // Ajustes plegados: umbrales y valores exactos del simulador.
+        val settings = column(content, true)
+        button(settings, if (showSettings) "Ocultar ajustes" else "Ajustes") { showSettings = !showSettings; showTab("Panel") }
+        if (showSettings) {
+            val limit = field(settings, "Encender si alguien está a menos de (cm, 5 a 200)", initial = (latest?.thresholdCm ?: lighting.thresholdCm).toString())
+            limit.inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+            button(settings, "Guardar distancia") {
+                val value = limit.text.toString().replace(',', '.').toDoubleOrNull()
+                if (value == null || !value.isFinite() || value !in 5.0..200.0) toast("Ingresa un valor entre 5 y 200 cm.")
+                else command("set_threshold", value)
             }
-            button(simulation, "Ultrasónico: objeto lejos (100 cm)") {
-                lighting.updateSensors(100.0, lighting.ldrPercent); if (nodeRunning) sample()
+            val ldrLimit = field(settings, "Encender si la luz baja de (%, 0 a 100)", initial = (latest?.ldrThresholdPercent ?: lighting.ldrThresholdPercent).toString())
+            ldrLimit.inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
+            button(settings, "Guardar nivel de luz") {
+                val value = ldrLimit.text.toString().replace(',', '.').toDoubleOrNull()
+                if (value == null || !value.isFinite() || value !in 0.0..100.0) toast("Ingresa un valor entre 0 y 100 %.")
+                else command("set_ldr_threshold", value)
             }
-            button(simulation, "LDR: simular sombra (10 %)") {
-                lighting.updateSensors(lighting.distanceCm, 10.0); if (nodeRunning) sample()
-            }
-            button(simulation, "LDR: simular luz (80 %)") {
-                lighting.updateSensors(lighting.distanceCm, 80.0); if (nodeRunning) sample()
-            }
-            val ldr = field(simulation, "Iluminación LDR de 0 a 100 %", initial = lighting.ldrPercent.toString())
-            ldr.inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
-            button(simulation, "Aplicar iluminación simulada") {
-                val value = ldr.text.toString().replace(',', '.').toDoubleOrNull()
-                if (value == null || !value.isFinite() || value !in 0.0..100.0) toast("Ingresa un nivel entre 0 y 100 %.")
-                else { lighting.updateSensors(lighting.distanceCm, value); if (nodeRunning) sample() }
-            }
-            val distance = field(simulation, "Distancia simulada de 0 a 500 cm", initial = lighting.distanceCm.toString())
-            distance.inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
-            button(simulation, "Aplicar distancia simulada") {
-                val value = distance.text.toString().replace(',', '.').toDoubleOrNull()
-                if (value == null || !value.isFinite() || value !in 0.0..500.0) toast("Ingresa una distancia entre 0 y 500 cm.")
-                else { lighting.updateSensors(value, lighting.ldrPercent); if (nodeRunning) sample() }
-            }
-            content.removeView(simulation)
-            content.addView(simulation, 4)
         }
         renderReading()
+    }
+    // Deslizador con su valor siempre visible; onChange recibe el valor elegido.
+    private fun slider(parent: LinearLayout, label: String, unit: String, max: Int, initial: Double, onChange: (Double) -> Unit) {
+        val title = text("$label: ${initial.toInt()} $unit", 17f, navy, true).apply { setPadding(0, dp(12), 0, 0) }
+        parent.addView(title)
+        parent.addView(android.widget.SeekBar(this).apply {
+            this.max = max; progress = initial.toInt().coerceIn(0, max); contentDescription = label
+            minimumHeight = dp(48); setPadding(dp(12), dp(12), dp(12), dp(12))
+            setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
+                private var dragging = false
+                // Con el dedo, la lectura se genera al soltar para no llenar el historial con cada píxel;
+                // con teclado o accesibilidad no hay "soltar", así que se aplica al momento.
+                override fun onProgressChanged(bar: android.widget.SeekBar, value: Int, fromUser: Boolean) {
+                    title.text = "$label: $value $unit"
+                    if (!dragging) onChange(value.toDouble())
+                }
+                override fun onStartTrackingTouch(bar: android.widget.SeekBar) { dragging = true }
+                override fun onStopTrackingTouch(bar: android.widget.SeekBar) { dragging = false; onChange(bar.progress.toDouble()) }
+            })
+        }, LinearLayout.LayoutParams(-1, -2))
     }
     // Permite elegir el rol e iniciar el nodo o emparejar el panel con su configuración.
     private fun connection() {
         val modes = column(content, true)
-        modes.addView(text("Selecciona el rol de este teléfono", 20f, bold = true))
-        modes.addView(text("Los dos equipos deben estar en la misma red Wi-Fi o conectados al mismo punto de acceso.", 14f, muted))
-        button(modes, "Usar como panel de control") { changeMode(false) }
-        button(modes, "Usar como nodo IoT simulado") { changeMode(true) }
+        modes.addView(text("¿Qué hará este teléfono?", 20f, bold = true))
+        modes.addView(text("Ahora: ${if (nodeMode) "es el sensor" else "controla la luz"}", 15f, teal, true))
+        button(modes, "Controlar la luz") { changeMode(false) }
+        button(modes, "Ser el sensor") { changeMode(true) }
+        modes.addView(text("Los dos teléfonos deben estar en el mismo Wi-Fi.", 14f, muted))
         val card = column(content, true)
-        statusView = text(status, 15f, bold = true).also { card.addView(it) }
+        statusView = text(status, 16f, bold = true).also { card.addView(it) }
         if (nodeMode) {
-            card.addView(text("1. Inicia el nodo", 21f, bold = true))
+            card.addView(text("1. Encender el sensor", 20f, bold = true))
             val addresses = localAddresses()
-            card.addView(text("IPv4 detectadas: ${addresses.joinToString().ifBlank { "ninguna; revisa Wi-Fi" }}", 14f, muted))
-            val ip = field(card, "IPv4 del nodo en la red Wi-Fi", initial = chosenIp.ifBlank { addresses.firstOrNull().orEmpty() })
-            button(card, "Iniciar nodo y generar configuración") {
+            val ip = field(card, "Dirección de este teléfono en el Wi-Fi", initial = chosenIp.ifBlank { addresses.firstOrNull().orEmpty() })
+            button(card, "Encender sensor") {
                 try {
                     chosenIp = ip.text.toString().trim()
                     Pairing.parse(Pairing(chosenIp, 8842, security.pin, token).encode())
@@ -424,40 +447,37 @@ class MainActivity : Activity() {
                     net.startNode(8842, token)
                     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                     showTab("Conectar")
-                } catch (_: Exception) { toast("Ingresa la IPv4 Wi-Fi de este teléfono.") }
+                } catch (_: Exception) { toast("Revisa la dirección: este teléfono debe estar conectado al Wi-Fi.") }
             }
             if (nodeRunning) {
-                card.addView(text("2. Copia la configuración al panel", 19f, bold = true))
+                card.addView(text("2. Copia el código y pégalo en el otro teléfono", 18f, bold = true))
                 val config = Pairing(chosenIp, 8842, security.pin, token).encode()
-                card.addView(text(config, 12f, muted).apply { setTextIsSelectable(true) })
-                button(card, "Copiar configuración de conexión") {
+                button(card, "Copiar código") {
                     val clip = ClipData.newPlainText("LumenLink · configuración privada", config)
                     if (android.os.Build.VERSION.SDK_INT >= 33) {
                         clip.description.extras = android.os.PersistableBundle().apply { putBoolean("android.content.extra.IS_SENSITIVE", true) }
                     }
                     (getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(clip)
-                    toast("Copiado. Transfiérelo por un medio privado al otro teléfono.")
+                    toast("Código copiado. Pégalo en el otro teléfono.")
                 }
-                card.addView(text("La configuración contiene un token secreto. Compártela solo con el panel autorizado. Usa Detener para invalidarla.", 13f, muted))
+                card.addView(text("El código es privado: compártelo solo con tu otro teléfono.", 14f, muted))
             }
         } else {
-            card.addView(text("Conectar con el nodo", 21f, bold = true))
-            card.addView(text("Pega la configuración generada por el segundo teléfono. La huella verifica su certificado TLS.", 14f, muted))
-            val config = field(card, "LUMEN1|IP|puerto|huella|token", initial = pairText)
+            card.addView(text("Conectar con el sensor", 20f, bold = true))
+            val config = field(card, "Pega aquí el código del sensor", initial = pairText)
             config.setSingleLine(false)
-            button(card, "Conectar de forma segura") {
+            button(card, "Conectar") {
                 try {
                     val pair = Pairing.parse(config.text.toString())
                     pairText = config.text.toString().trim()
                     latest = null; trend.clear(); ldrTrend.clear()
                     net.startController(pair)
                     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                } catch (e: Exception) { toast(e.message ?: "Configuración inválida") }
+                } catch (_: Exception) { toast("El código no es válido. Cópialo de nuevo desde el sensor.") }
             }
         }
-        button(card, "Detener conexión") { stopConnection(); showTab("Conectar") }
-        val note = column(content)
-        note.addView(text("Mantén ambos teléfonos con la aplicación visible. Si sales de la aplicación, la conexión se detiene y debes iniciarla de nuevo.", 14f, muted))
+        button(card, "Desconectar") { stopConnection(); showTab("Conectar") }
+        card.addView(text("Deja la app abierta en los dos teléfonos mientras los usas.", 14f, muted))
     }
     // Al cambiar de rol, termina la sesión de red y restablece la simulación.
     private fun changeMode(node: Boolean) {
@@ -473,67 +493,64 @@ class MainActivity : Activity() {
         if (invalidateToken) token = freshToken()
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
-    // Consulta las últimas 100 lecturas, las filtra según la opción elegida y calcula su resumen.
+    // Consulta las últimas 100 lecturas, las filtra según la opción elegida y muestra un resumen simple.
     private fun history() {
         val card = column(content, true)
-        card.addView(text("Historial de lecturas", 22f, bold = true))
-        card.addView(text("Datos cifrados en SQLite · hasta 2.000 registros por cuenta. Se consultan las 100 lecturas más recientes.", 14f, muted))
-        if (!nodeMode) button(card, "Sincronizar historial del nodo") { requestSync() }
-        button(card, "Actualizar lista") { showTab("Historial") }
-        // Barra de opciones de consulta: la opción activa se resalta en verde azulado.
+        card.addView(text("Historial", 22f, bold = true))
+        val totalView = text("Cargando…", 15f, muted).also { card.addView(it) }
+        if (!nodeMode) button(card, "Traer datos del sensor") { requestSync() }
+        button(card, "Actualizar") { showTab("Historial") }
+        // Opciones de consulta: la activa se resalta en verde azulado.
         val filters = column(content, true)
-        filters.addView(text("Consultar lecturas por", 14f, muted, true))
+        filters.addView(text("Mostrar", 16f, muted, true))
         val chips = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         for (option in HistoryFilter.values()) {
             chips.addView(Button(this).apply {
-                text = option.label; isAllCaps = false; textSize = 11f; minimumWidth = 0; minWidth = 0; setPadding(0, 0, 0, 0)
+                text = option.label; isAllCaps = false; textSize = 13f; minimumWidth = 0; minWidth = 0; setPadding(0, 0, 0, 0)
                 setTextColor(if (option == historyFilter) Color.WHITE else navy)
                 backgroundTintList = android.content.res.ColorStateList.valueOf(if (option == historyFilter) teal else Color.rgb(226, 234, 238))
                 setOnClickListener { historyFilter = option; showTab("Historial") }
-            }, LinearLayout.LayoutParams(0, dp(44), 1f).apply { marginEnd = dp(3) })
+            }, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginEnd = dp(3) })
         }
         filters.addView(chips)
-        // Resumen calculado de las lecturas seleccionadas.
+        // Resumen de las lecturas seleccionadas, en pocas líneas.
         val statsCard = column(content, true)
-        statsCard.addView(text("Resumen calculado · ${historyFilter.label}", 18f, bold = true))
-        val statsView = text("Calculando…", 14f, muted).also { statsCard.addView(it) }
-        // Formulario de cálculo: estima el consumo mensual a partir del % de tiempo con luz encendida.
+        statsCard.addView(text("Resumen · ${historyFilter.label}", 18f, bold = true))
+        val statsView = text("Calculando…", 16f).also { statsCard.addView(it) }
+        // Calculadora plegada: estima el consumo mensual a partir del % de tiempo con luz encendida.
         val calc = column(content, true)
-        calc.addView(text("Calculadora de consumo y ahorro", 18f, bold = true))
-        calc.addView(text("Usa el % de lecturas con luz encendida de todo el historial consultado.", 13f, muted))
-        val watts = field(calc, "Potencia de la ampolleta en W (1 a 500)", initial = "9")
-        val hours = field(calc, "Horas de uso al día (1 a 24)", initial = "12")
-        val tariff = field(calc, "Tarifa en CLP por kWh (1 a 2.000)", initial = "200")
-        listOf(watts, hours, tariff).forEach { it.inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL }
-        val calcResult = text("Completa los datos y pulsa Calcular.", 14f, muted)
-        button(calc, "Calcular consumo") {
-            val w = watts.text.toString().replace(',', '.').toDoubleOrNull()
-            val h = hours.text.toString().replace(',', '.').toDoubleOrNull()
-            val t = tariff.text.toString().replace(',', '.').toDoubleOrNull()
-            watts.error = null; hours.error = null; tariff.error = null
-            val error = EnergyCalculator.validate(w, h, t)
-            val onPercent = allStats?.lightOnPercent
-            when {
-                error != null -> {
-                    val target = when { error.startsWith("Potencia") -> watts; error.startsWith("Horas") -> hours; else -> tariff }
-                    target.error = error; target.requestFocus(); toast(error)
-                }
-                onPercent == null -> toast("Aún no hay lecturas para calcular. Inicia un nodo o conecta el panel.")
-                else -> {
-                    val e = EnergyCalculator.estimate(onPercent, w!!, h!!, t!!)
-                    calcResult.setTextColor(navy)
-                    calcResult.text = "Luz encendida: ${fmt(onPercent, 1)} % de las lecturas\n" +
-                        "Horas encendida al día: ${fmt(e.hoursOnPerDay, 1)} h\n" +
-                        "Consumo mensual: ${fmt(e.kwhPerMonth, 2)} kWh · \$${fmt(e.costPerMonthClp, 0)} CLP\n" +
-                        "Ahorro vs. siempre encendida: ${fmt(e.savedKwhPerMonth, 2)} kWh · \$${fmt(e.savedClpPerMonth, 0)} CLP al mes"
-                    toast("Cálculo realizado.")
+        button(calc, if (showCalculator) "Ocultar calculadora" else "Calcular gasto de luz") { showCalculator = !showCalculator; showTab("Historial") }
+        if (showCalculator) {
+            val watts = field(calc, "Potencia de la ampolleta (W)", initial = "9")
+            val hours = field(calc, "Horas de uso al día", initial = "12")
+            val tariff = field(calc, "Precio del kWh (CLP)", initial = "200")
+            listOf(watts, hours, tariff).forEach { it.inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL }
+            val calcResult = text("", 16f, navy)
+            button(calc, "Calcular") {
+                val w = watts.text.toString().replace(',', '.').toDoubleOrNull()
+                val h = hours.text.toString().replace(',', '.').toDoubleOrNull()
+                val t = tariff.text.toString().replace(',', '.').toDoubleOrNull()
+                watts.error = null; hours.error = null; tariff.error = null
+                val error = EnergyCalculator.validate(w, h, t)
+                val onPercent = allStats?.lightOnPercent
+                when {
+                    error != null -> {
+                        val target = when { error.startsWith("Potencia") -> watts; error.startsWith("Horas") -> hours; else -> tariff }
+                        target.error = error; target.requestFocus(); toast(error)
+                    }
+                    onPercent == null -> toast("Aún no hay datos para calcular. Conéctate primero.")
+                    else -> {
+                        val e = EnergyCalculator.estimate(onPercent, w!!, h!!, t!!)
+                        calcResult.text = "Gasto al mes: \$${fmt(e.costPerMonthClp, 0)} (${fmt(e.kwhPerMonth, 2)} kWh)\n" +
+                            "Ahorras: \$${fmt(e.savedClpPerMonth, 0)} al mes frente a dejarla siempre encendida"
+                    }
                 }
             }
+            calc.addView(calcResult)
         }
-        calc.addView(calcResult)
         val listCard = column(content, true)
         listCard.addView(text("Lecturas · ${historyFilter.label}", 18f, bold = true))
-        val result = text("Cargando…", 14f, muted).also { listCard.addView(it) }
+        val result = text("Cargando…", 15f, muted).also { listCard.addView(it) }
         val owner = user ?: return
         val filter = historyFilter
         io.execute {
@@ -544,47 +561,29 @@ class MainActivity : Activity() {
             runOnUiThread {
                 if (user != owner || tab != "Historial" || !result.isAttachedToWindow) return@runOnUiThread
                 val (total, rows, selected) = loaded.getOrElse {
-                    result.text = "No se pudo leer el historial cifrado."; statsView.text = "Sin datos."; return@runOnUiThread
+                    result.text = "No se pudo leer el historial."; statsView.text = "Sin datos."; return@runOnUiThread
                 }
+                totalView.text = "$total registros guardados"
                 allStats = ReadingStats.of(rows)
                 val s = ReadingStats.of(selected)
                 statsView.text = if (s == null) "No hay lecturas para esta opción." else
-                    "${s.count} de ${rows.size} lecturas consultadas ($total guardadas)\n" +
-                    "Distancia promedio: ${fmt(s.avgDistanceCm, 1)} cm · mín ${fmt(s.minDistanceCm, 1)} · máx ${fmt(s.maxDistanceCm, 1)}\n" +
-                    "LDR promedio: ${fmt(s.avgLdrPercent, 0)} %\n" +
-                    "Luz encendida: ${fmt(s.lightOnPercent, 1)} % · Automático: ${fmt(s.automaticPercent, 1)} %"
-                result.text = if (rows.isEmpty()) "Aún no hay lecturas. Inicia un nodo o conecta el panel."
+                    "Lecturas: ${s.count}\n" +
+                    "Luz encendida: ${fmt(s.lightOnPercent, 0)} % del tiempo\n" +
+                    "Luz del ambiente promedio: ${fmt(s.avgLdrPercent, 0)} %\n" +
+                    "Distancia promedio: ${fmt(s.avgDistanceCm, 0)} cm"
+                result.text = if (rows.isEmpty()) "Aún no hay lecturas. Conéctate en la pestaña Conectar."
                 else if (selected.isEmpty()) "Ninguna lectura coincide con «${filter.label}»."
-                else selected.joinToString("\n\n") { "${timeFor(it.at)} · ${fmt(it.distanceCm, 1)} cm\nLDR ${fmt(it.ldrPercent, 0)} % · Luz ${if (it.lightOn) "ON" else "OFF"} · ${if (it.automatic) "AUTO" else "MANUAL"}" }
+                else selected.joinToString("\n\n") { "${timeFor(it.at)}\n${if (it.lightOn) "💡 Encendida" else "Apagada"} · luz ${fmt(it.ldrPercent, 0)} % · ${fmt(it.distanceCm, 0)} cm" }
             }
         }
     }
     // Formatea un número con la cantidad de decimales indicada.
     private fun fmt(value: Double, decimals: Int): String = "%.${decimals}f".format(Locale("es", "CL"), value)
-    // Muestra las instrucciones de demostración y permite cerrar la sesión.
-    private fun help() {
-        val card = column(content, true)
-        card.addView(text("Preparar la demostración", 22f, bold = true))
-        card.addView(text("1. Instala LumenLink en dos Android 8 o posteriores.\n\n2. Crea una cuenta local e inicia sesión en cada teléfono.\n\n3. Conéctalos a la misma red Wi-Fi. En el segundo teléfono elige Nodo, revisa su IPv4 e inícialo.\n\n4. Transfiere su configuración al Panel y conecta.\n\n5. Observa la distancia y el nivel de iluminación LDR. Prueba cercanía y oscuridad por separado y juntas. Confirma la luz en el Nodo.\n\n6. Interrumpe Wi-Fi, deja generar datos al Nodo y restablece la red. El Panel intentará reconectar y sincronizar.\n\n7. Revisa el historial y explica las medidas de seguridad.", 15f))
-        button(card, "Cerrar sesión") {
-            stopConnection(); user = null; latest = null; pairText = ""; historyFilter = HistoryFilter.ALL; allStats = null; trend.clear(); ldrTrend.clear(); loginScreen()
-        }
-        // Controles de seguridad aplicados, relacionados con la norma IoT y los controles de ISO/IEC 27002.
-        val iso = column(content, true)
-        iso.addView(text("Seguridad · ISO/IEC 27400 e ISO/IEC 27002", 18f, bold = true))
-        iso.addView(text("Controles implementados en la aplicación según los lineamientos de seguridad y privacidad IoT:", 14f, muted))
-        iso.addView(text(
-            "• Control de acceso y autenticación (27002 5.15, 5.17, 8.5): cuenta local, contraseña de 6 a 128 caracteres derivada con PBKDF2-SHA256 (210.000 iteraciones) y bloqueo de 30 s tras 5 intentos fallidos.\n\n" +
-            "• Uso de criptografía (27002 8.24): lecturas cifradas con AES-256-GCM; claves guardadas en Android Keystore, nunca en el código.\n\n" +
-            "• Seguridad de las comunicaciones (27002 8.20, 8.21): TLS 1.2 entre panel y nodo, certificado fijado por huella SHA-256 y token aleatorio de 128 bits; sin tráfico en texto plano.\n\n" +
-            "• Validación de entradas (27002 8.28): formularios con rangos, mensajes rechazados si no cumplen el formato y consultas SQL parametrizadas.\n\n" +
-            "• Privacidad del dispositivo IoT (27400): datos separados por usuario, sin copias de seguridad automáticas, capturas de pantalla bloqueadas y portapapeles marcado como sensible.", 14f))
-        iso.addView(text("Prototipo académico: aplica los controles, pero no cuenta con certificación ni auditoría formal.", 12f, muted))
-    }
     // El panel envía la orden; el estado de la luz se confirma con la respuesta del nodo.
     private fun command(action: String, value: Double? = null) {
-        if (nodeMode && nodeRunning) { applyCommand(action, value); return }
-        if (nodeMode || !net.connected) { toast("Inicia el nodo o conecta el panel antes de controlar."); return }
+        // En el teléfono sensor la orden se aplica directo, aunque no haya otro teléfono conectado.
+        if (nodeMode) { applyCommand(action, value); return }
+        if (!net.connected) { toast("Primero conéctate con el sensor en la pestaña Conectar."); return }
         net.send(JSONObject().put("type", "command").put("action", action).apply { if (value != null) put("value", value) })
         toast("Comando enviado. Esperando estado confirmado del nodo.")
     }
@@ -704,26 +703,26 @@ class MainActivity : Activity() {
         detailView?.text = "Última lectura: ${time.format(Date(r.at))}"
         val near = r.distanceCm <= r.thresholdCm
         val dark = r.ldrPercent <= r.ldrThresholdPercent
-        val umbral = "%.0f".format(Locale.ROOT, r.ldrThresholdPercent)
         ldrView?.text = "${"%.0f".format(Locale.ROOT, r.ldrPercent)} %"
         ldrView?.setTextColor(if (dark) navy else LdrBar.amberDark)
         ldrStateView?.text = when {
-            dark -> "🌙 Oscuridad · bajo el umbral de $umbral %"
-            r.ldrPercent < 60 -> "⛅ Luz media · sobre el umbral de $umbral %"
-            else -> "☀️ Mucha luz · sobre el umbral de $umbral %"
+            dark -> "🌙 Está oscuro"
+            r.ldrPercent < 60 -> "⛅ Luz media"
+            else -> "☀️ Mucha luz"
         }
         ldrStateView?.setTextColor(if (dark) navy else LdrBar.amberDark)
         ldrBar?.apply { percent = r.ldrPercent.toFloat(); threshold = r.ldrThresholdPercent.toFloat(); invalidate() }
         ldrTrendView?.apply { values = ldrTrend.toList(); marker = r.ldrThresholdPercent.toFloat(); invalidate() }
         val cause = when {
-            near && dark -> "Cercanía y oscuridad detectadas"
-            near -> "Ultrasónico: objeto cercano"
-            dark -> "LDR: oscuridad o sombra"
-            else -> "Sin cercanía ni oscuridad"
+            !r.automatic -> "Controlada a mano"
+            near && dark -> "Hay alguien cerca y está oscuro"
+            near -> "Hay alguien cerca"
+            dark -> "Está oscuro"
+            else -> "Nadie cerca y hay luz"
         }
-        lightOnView?.text = "${if (r.lightOn) "💡 LUZ ENCENDIDA" else "LUZ APAGADA"} · ${if (r.automatic) "Automático" else "Manual"}\n$cause\nUmbrales: ${r.thresholdCm} cm / LDR ${r.ldrThresholdPercent} %"
+        lightOnView?.text = "${if (r.lightOn) "💡 LUZ ENCENDIDA" else "LUZ APAGADA"} · ${if (r.automatic) "Automático" else "Manual"}\n$cause"
         lightOnView?.setTextColor(if (r.lightOn) navy else muted)
-        lightOnView?.background = background(if (r.lightOn) Color.rgb(255, 236, 179) else Color.rgb(232, 238, 241), 10)
+        lightOnView?.background = background(if (r.lightOn) Color.rgb(255, 236, 179) else Color.rgb(232, 238, 241), 14)
         trendView?.values = trend.toList()
         trendView?.invalidate()
     }
@@ -744,7 +743,7 @@ class MainActivity : Activity() {
         super.onStop()
         if (::net.isInitialized) {
             stopConnection(invalidateToken = false)
-            status = "Conexión detenida al salir. Iníciala otra vez en Conectar."
+            status = "Desconectado al salir de la app. Vuelve a conectar en Conectar."
             statusView?.text = status
         }
     }
@@ -868,7 +867,7 @@ class NetworkEngine(private val security: DeviceSecurity,
                 server.bind(InetSocketAddress(port))
                 if (generation.get() != g) return@Thread
                 listener = server
-                announce(g, "Nodo listo · esperando panel en puerto $port")
+                announce(g, "Sensor listo · esperando al otro teléfono")
                 while (generation.get() == g) {
                     val peer = server.accept() as SSLSocket
                     if (generation.get() != g) { peer.close(); break }
@@ -886,11 +885,11 @@ class NetworkEngine(private val security: DeviceSecurity,
                         Frames.write(out, JSONObject().put("type", "welcome").put("version", 1))
                         synchronized(writeLock) { output = out }
                         peer.soTimeout = 15_000
-                        announce(g, "Panel conectado · TLS 1.2", true)
+                        announce(g, "✅ Conectado con el otro teléfono", true)
                         readLoop(g, input)
                     } catch (e: Exception) {
                         android.util.Log.w("LumenLink", "Sesión del nodo rechazada", e)
-                        announce(g, "Panel desconectado · nodo disponible")
+                        announce(g, "El otro teléfono se desconectó")
                     } finally {
                         runCatching { peer.close() }
                         synchronized(writeLock) { if (socket === peer) { output = null; socket = null } }
@@ -898,7 +897,7 @@ class NetworkEngine(private val security: DeviceSecurity,
                 }
             } catch (e: Exception) {
                 android.util.Log.w("LumenLink", "No se pudo iniciar el nodo", e)
-                announce(g, "No se pudo abrir el nodo. Revisa si el puerto está ocupado.")
+                announce(g, "No se pudo encender el sensor. Inténtalo de nuevo.")
             } finally { runCatching { server?.close() } }
         }, "lumenlink-server").start()
     }
@@ -910,7 +909,7 @@ class NetworkEngine(private val security: DeviceSecurity,
             while (generation.get() == g) {
                 var peer: SSLSocket? = null
                 try {
-                    announce(g, "Conectando con ${pair.host}…")
+                    announce(g, "Conectando…")
                     peer = security.clientContext(pair.fingerprint).socketFactory.createSocket() as SSLSocket
                     if (generation.get() != g) break
                     socket = peer
@@ -924,11 +923,11 @@ class NetworkEngine(private val security: DeviceSecurity,
                     require(Frames.read(input).optString("type") == "welcome")
                     synchronized(writeLock) { output = out }
                     peer.soTimeout = 15_000
-                    announce(g, "Conectado · certificado verificado · TLS 1.2", true)
+                    announce(g, "✅ Conectado con el sensor", true)
                     readLoop(g, input)
                 } catch (e: Exception) {
                     android.util.Log.w("LumenLink", "No se pudo conectar el panel", e)
-                    announce(g, "Sin conexión. Reintento en 3 s. Revisa red, huella y token.")
+                    announce(g, "Sin conexión. Reintentando… Revisa que los dos teléfonos estén en el mismo Wi-Fi.")
                 } finally {
                     runCatching { peer?.close() }
                     synchronized(writeLock) { if (socket === peer) { output = null; socket = null } }

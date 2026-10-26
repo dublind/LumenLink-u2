@@ -244,10 +244,10 @@ El [mockup visual](docs/MOCKUP.svg) representa las cuatro pantallas principales 
 Acceso
  ├─ Crear cuenta local
  └─ Iniciar sesión
-     ├─ Panel: distancia, iluminación LDR, tendencia y controles
-     ├─ Conectar: rol, IPv4, configuración y estado
-     ├─ Historial: consulta local y sincronización del nodo
-     └─ Ayuda: procedimiento y cierre de sesión
+     ├─ Panel: estado de la luz, botones, luminosidad, distancia y simulador con deslizadores
+     ├─ Conectar: rol del teléfono, código de conexión y estado
+     ├─ Historial: resumen, lecturas y calculadora de gasto
+     └─ Salir (en el encabezado): cierre de sesión
 ```
 
 El panel muestra el estado recibido del nodo; enviar una orden no se interpreta como confirmación. El nodo aplica una condición OR inclusiva: en automático basta con que la distancia sea igual o inferior a su umbral o que el nivel LDR sea igual o inferior al suyo. La prueba cubre las cuatro combinaciones y los límites. El control manual tiene prioridad hasta reactivar automático. Una pérdida de comunicación activa el modo automático en el nodo al detectarse. Ante una aplicación detenida no continúa la simulación en segundo plano.
@@ -292,7 +292,7 @@ Esta matriz utiliza la guía de la Unidad 2 entregada en la conversación. La es
 | Almacenamiento y consulta | SQLite local cifrado e historial remoto | Guardar muestras, reiniciar y consultar después del login |
 | Interoperabilidad | JSON con campos y unidades definidos | Mostrar los tipos de mensajes del protocolo y el código |
 | Seguridad según orientación ISO 27400 | Medidas documentadas de autenticación, cifrado y permisos | Explicar implementación y límites sin afirmar certificación |
-| Mockup y navegación | `MOCKUP.svg`, mapa de pantallas e interfaz implementada | Revisar el diseño y recorrer Acceso, Panel, Conectar, Historial y Ayuda |
+| Mockup y navegación | `MOCKUP.svg`, mapa de pantallas e interfaz implementada | Revisar el diseño y recorrer Acceso, Panel, Conectar e Historial |
 | Revisión con el docente | Pendiente de validación académica | Obtener comentarios y registrar ajustes |
 | Preentrega formativa | Material disponible para mostrar avance | Coordinar fecha y aplicar lista de cotejo del curso |
 | Demostración en clase | Guion incluido | Ejecutar el recorrido en dos equipos |
@@ -302,9 +302,9 @@ Esta matriz utiliza la guía de la Unidad 2 entregada en la conversación. La es
 
 | Criterio (Destacado, 20 pts) | Qué pide | Dónde está en la app | Cómo demostrarlo |
 |---|---|---|---|
-| 2.1.1 Herramientas y estándar de diseño | Barra de navegación con 3 ítems que permitan **listar y procesar** información | Barra inferior con 4 ítems (Panel, Conectar, Historial, Ayuda). Historial **lista** las lecturas y las **procesa**: filtros, resumen calculado y calculadora de consumo | Recorrer las pestañas; en Historial elegir un filtro y mostrar el resumen |
+| 2.1.1 Herramientas y estándar de diseño | Barra de navegación con 3 ítems que permitan **listar y procesar** información | Barra inferior con 3 ítems (Panel, Conectar, Historial). Historial **lista** las lecturas y las **procesa**: filtros, resumen calculado y calculadora de consumo | Recorrer las pestañas; en Historial elegir un filtro y mostrar el resumen |
 | 2.1.2 App Android con conexión inalámbrica | Conexión, navegación entre pantallas y **envío de datos** | Wi-Fi con TLS 1.2 entre panel y nodo; el panel envía comandos y umbrales, y el nodo envía lecturas e historial | Conectar dos teléfonos, cambiar la luz desde el panel y confirmar en el nodo |
-| 2.1.3 Estándar ISO de seguridad IoT | Formularios con captura de datos, **cálculos**, validación y mensajes al usuario | Tarjeta «Seguridad · ISO/IEC 27400 e ISO/IEC 27002» en Ayuda; login y registro con error por campo y confirmación de contraseña; calculadora de kWh/CLP con rangos validados; umbrales validados | Ingresar datos erróneos para mostrar los mensajes y luego datos correctos para mostrar el cálculo |
+| 2.1.3 Estándar ISO de seguridad IoT | Formularios con captura de datos, **cálculos**, validación y mensajes al usuario | Controles ISO/IEC 27002 aplicados en el código (ver lista más abajo); login y registro con error por campo y confirmación de contraseña; calculadora de kWh/CLP con rangos validados; umbrales validados | Ingresar datos erróneos para mostrar los mensajes y luego datos correctos para mostrar el cálculo |
 
 **Cálculos de Historial** (`core/Logica.kt`, bloque 4, probados en `HistoryCalculationTest`):
 
