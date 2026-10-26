@@ -363,7 +363,7 @@ class UiFlowTest {
             }
             waitFor(scenario, "Nodo listo")
             scenario.onActivity { click(it, "Panel") }
-            waitFor(scenario, "LDR:")
+            waitFor(scenario, "Última lectura:")
             waitFor(scenario, "LUZ APAGADA · Automático")
             scenario.onActivity { click(it, "LDR: simular sombra (10 %)") }
             waitFor(scenario, "LUZ ENCENDIDA · Automático")

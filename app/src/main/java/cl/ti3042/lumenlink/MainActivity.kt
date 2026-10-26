@@ -134,7 +134,12 @@ class MainActivity : Activity() {
     private var detailView: TextView? = null
     private var lightOnView: TextView? = null
     private var trendView: TrendView? = null
+    private var ldrView: TextView? = null
+    private var ldrStateView: TextView? = null
+    private var ldrBar: LdrBar? = null
+    private var ldrTrendView: TrendView? = null
     private val trend = ArrayDeque<Float>()
+    private val ldrTrend = ArrayDeque<Float>()
     private val time = SimpleDateFormat("dd/MM HH:mm:ss", Locale("es", "CL"))
 
     // Android llama aquí al abrir la app: prepara las claves, la base de datos y la red.
@@ -209,6 +214,7 @@ class MainActivity : Activity() {
     // Construye el encabezado y el contenido desplazable compartidos por las pantallas.
     private fun shell(subtitle: String) {
         statusView = null; distanceView = null; detailView = null; lightOnView = null; trendView = null
+        ldrView = null; ldrStateView = null; ldrBar = null; ldrTrendView = null
         root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setBackgroundColor(Color.rgb(242, 246, 248)) }
         // Deja espacio para las barras del sistema, también en Android 15.
         root.setOnApplyWindowInsetsListener { v, insets ->
@@ -239,7 +245,7 @@ class MainActivity : Activity() {
         val name = field(card, "Usuario")
         val pass = field(card, "Contraseña", true)
         val confirm = field(card, "Repetir contraseña · solo al crear cuenta", true)
-        val feedback = text("Crea una cuenta local en cada teléfono. Usa una contraseña de 12 a 128 caracteres.", 14f, muted)
+        val feedback = text("Crea una cuenta local en cada teléfono. Usa una contraseña de 6 a 128 caracteres.", 14f, muted)
         card.addView(feedback)
         val actions = mutableListOf<Button>()
         // Valida cada campo antes de consultar la base y marca el campo con el error.
@@ -249,7 +255,7 @@ class MainActivity : Activity() {
                 n.isEmpty() -> name to "Ingresa tu usuario."
                 !PasswordHasher.validUser(n) -> name to "Usuario: usa entre 3 y 32 letras, números, punto, guion o guion bajo."
                 p.isEmpty() -> pass to "Ingresa tu contraseña."
-                register && !PasswordHasher.validPassword(p) -> pass to "La contraseña debe tener entre 12 y 128 caracteres."
+                register && !PasswordHasher.validPassword(p) -> pass to "La contraseña debe tener entre 6 y 128 caracteres."
                 register && confirm.text.toString() != p -> confirm to "Las contraseñas no coinciden."
                 else -> return null
             }
@@ -315,15 +321,32 @@ class MainActivity : Activity() {
         val state = column(content, true)
         state.addView(text("Estado de la conexión", 14f, muted))
         statusView = text(status, 16f, bold = true).also { state.addView(it) }
+        // Tarjeta de luminosidad: porcentaje grande, barra con el umbral marcado y su propio gráfico.
+        val light = column(content, true)
+        light.addView(text("LUMINOSIDAD · SENSOR LDR", 12f, muted, true))
+        ldrView = text("— %", 46f, bold = true).also { light.addView(it) }
+        ldrStateView = text("Sin lecturas de la LDR", 15f, muted, true).also { light.addView(it) }
+        ldrBar = LdrBar(this).also { light.addView(it, LinearLayout.LayoutParams(-1, dp(34)).apply { topMargin = dp(6) }) }
+        val scale = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        scale.addView(text("0 % oscuro", 12f, muted), LinearLayout.LayoutParams(0, -2, 1f))
+        scale.addView(text("100 % luz", 12f, muted).apply { gravity = Gravity.END }, LinearLayout.LayoutParams(0, -2, 1f))
+        light.addView(scale)
+        ldrTrendView = TrendView(this).apply { lineColor = LdrBar.amber; fixedRange = 0f..100f }
+            .also { light.addView(it, LinearLayout.LayoutParams(-1, dp(90))) }
+        light.addView(text("Luminosidad · últimas 30 muestras · la línea azul es el umbral de oscuridad", 12f, muted))
         val values = column(content, true)
         values.addView(text("DISTANCIA ULTRASÓNICA SIMULADA", 12f, muted, true))
         distanceView = text("— cm", 46f, bold = true).also { values.addView(it) }
         detailView = text("Conecta un nodo para recibir el ultrasónico y la LDR.", 14f, muted).also { values.addView(it) }
+        // Estado de la luz destacado justo bajo la conexión, con fondo ámbar cuando está encendida.
+        lightOnView = text("Sin estado confirmado", 16f, muted, true).also {
+            it.setPadding(dp(12), dp(10), dp(12), dp(10)); it.background = background(Color.rgb(232, 238, 241), 10)
+            content.addView(it, 1, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) })
+        }
         trendView = TrendView(this).also { values.addView(it, LinearLayout.LayoutParams(-1, dp(110))) }
         values.addView(text("Distancia · últimas 30 muestras recibidas", 12f, muted))
         val controls = column(content, true)
         controls.addView(text("Control de iluminación", 21f, bold = true))
-        lightOnView = text("Sin estado confirmado", 15f, muted).also { controls.addView(it) }
         controls.addView(text("Automático: luz encendida si hay un objeto cercano O la LDR detecta oscuridad.", 14f, muted))
         button(controls, "Encender luz · manual") { command("light_on") }
         button(controls, "Apagar luz · manual") { command("light_off") }
@@ -375,7 +398,7 @@ class MainActivity : Activity() {
                 else { lighting.updateSensors(value, lighting.ldrPercent); if (nodeRunning) sample() }
             }
             content.removeView(simulation)
-            content.addView(simulation, 2)
+            content.addView(simulation, 4)
         }
         renderReading()
     }
@@ -426,7 +449,7 @@ class MainActivity : Activity() {
                 try {
                     val pair = Pairing.parse(config.text.toString())
                     pairText = config.text.toString().trim()
-                    latest = null; trend.clear()
+                    latest = null; trend.clear(); ldrTrend.clear()
                     net.startController(pair)
                     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 } catch (e: Exception) { toast(e.message ?: "Configuración inválida") }
@@ -439,7 +462,7 @@ class MainActivity : Activity() {
     // Al cambiar de rol, termina la sesión de red y restablece la simulación.
     private fun changeMode(node: Boolean) {
         if (nodeMode != node) {
-            stopConnection(); nodeMode = node; latest = null; trend.clear(); lighting.updateSensors(100.0, 80.0); lighting.enableAutomatic()
+            stopConnection(); nodeMode = node; latest = null; trend.clear(); ldrTrend.clear(); lighting.updateSensors(100.0, 80.0); lighting.enableAutomatic()
         }
         showTab("Conectar")
     }
@@ -544,14 +567,14 @@ class MainActivity : Activity() {
         card.addView(text("Preparar la demostración", 22f, bold = true))
         card.addView(text("1. Instala LumenLink en dos Android 8 o posteriores.\n\n2. Crea una cuenta local e inicia sesión en cada teléfono.\n\n3. Conéctalos a la misma red Wi-Fi. En el segundo teléfono elige Nodo, revisa su IPv4 e inícialo.\n\n4. Transfiere su configuración al Panel y conecta.\n\n5. Observa la distancia y el nivel de iluminación LDR. Prueba cercanía y oscuridad por separado y juntas. Confirma la luz en el Nodo.\n\n6. Interrumpe Wi-Fi, deja generar datos al Nodo y restablece la red. El Panel intentará reconectar y sincronizar.\n\n7. Revisa el historial y explica las medidas de seguridad.", 15f))
         button(card, "Cerrar sesión") {
-            stopConnection(); user = null; latest = null; pairText = ""; historyFilter = HistoryFilter.ALL; allStats = null; trend.clear(); loginScreen()
+            stopConnection(); user = null; latest = null; pairText = ""; historyFilter = HistoryFilter.ALL; allStats = null; trend.clear(); ldrTrend.clear(); loginScreen()
         }
         // Controles de seguridad aplicados, relacionados con la norma IoT y los controles de ISO/IEC 27002.
         val iso = column(content, true)
         iso.addView(text("Seguridad · ISO/IEC 27400 e ISO/IEC 27002", 18f, bold = true))
         iso.addView(text("Controles implementados en la aplicación según los lineamientos de seguridad y privacidad IoT:", 14f, muted))
         iso.addView(text(
-            "• Control de acceso y autenticación (27002 5.15, 5.17, 8.5): cuenta local, contraseña de 12 a 128 caracteres derivada con PBKDF2-SHA256 (210.000 iteraciones) y bloqueo de 30 s tras 5 intentos fallidos.\n\n" +
+            "• Control de acceso y autenticación (27002 5.15, 5.17, 8.5): cuenta local, contraseña de 6 a 128 caracteres derivada con PBKDF2-SHA256 (210.000 iteraciones) y bloqueo de 30 s tras 5 intentos fallidos.\n\n" +
             "• Uso de criptografía (27002 8.24): lecturas cifradas con AES-256-GCM; claves guardadas en Android Keystore, nunca en el código.\n\n" +
             "• Seguridad de las comunicaciones (27002 8.20, 8.21): TLS 1.2 entre panel y nodo, certificado fijado por huella SHA-256 y token aleatorio de 128 bits; sin tráfico en texto plano.\n\n" +
             "• Validación de entradas (27002 8.28): formularios con rangos, mensajes rechazados si no cumplen el formato y consultas SQL parametrizadas.\n\n" +
@@ -667,25 +690,40 @@ class MainActivity : Activity() {
         }
         if (net.connected) net.send(JSONObject().put("type", "reading").put("data", r.json()))
     }
-    // Conserva solamente las últimas 30 distancias para el gráfico.
+    // Conserva solamente las últimas 30 distancias y luminosidades para los gráficos.
     private fun addTrend(r: Reading) {
         trend.addLast(r.distanceCm.toFloat())
         while (trend.size > 30) trend.removeFirst()
+        ldrTrend.addLast(r.ldrPercent.toFloat())
+        while (ldrTrend.size > 30) ldrTrend.removeFirst()
     }
     // Actualiza los textos y el gráfico con el estado confirmado del nodo.
     private fun renderReading() {
         val r = latest ?: return
         distanceView?.text = "${"%.1f".format(Locale.ROOT, r.distanceCm)} cm"
-        detailView?.text = "LDR: ${"%.0f".format(Locale.ROOT, r.ldrPercent)} % de iluminación relativa\n${time.format(Date(r.at))}"
+        detailView?.text = "Última lectura: ${time.format(Date(r.at))}"
         val near = r.distanceCm <= r.thresholdCm
         val dark = r.ldrPercent <= r.ldrThresholdPercent
+        val umbral = "%.0f".format(Locale.ROOT, r.ldrThresholdPercent)
+        ldrView?.text = "${"%.0f".format(Locale.ROOT, r.ldrPercent)} %"
+        ldrView?.setTextColor(if (dark) navy else LdrBar.amberDark)
+        ldrStateView?.text = when {
+            dark -> "🌙 Oscuridad · bajo el umbral de $umbral %"
+            r.ldrPercent < 60 -> "⛅ Luz media · sobre el umbral de $umbral %"
+            else -> "☀️ Mucha luz · sobre el umbral de $umbral %"
+        }
+        ldrStateView?.setTextColor(if (dark) navy else LdrBar.amberDark)
+        ldrBar?.apply { percent = r.ldrPercent.toFloat(); threshold = r.ldrThresholdPercent.toFloat(); invalidate() }
+        ldrTrendView?.apply { values = ldrTrend.toList(); marker = r.ldrThresholdPercent.toFloat(); invalidate() }
         val cause = when {
             near && dark -> "Cercanía y oscuridad detectadas"
             near -> "Ultrasónico: objeto cercano"
             dark -> "LDR: oscuridad o sombra"
             else -> "Sin cercanía ni oscuridad"
         }
-        lightOnView?.text = "LUZ ${if (r.lightOn) "ENCENDIDA" else "APAGADA"} · ${if (r.automatic) "Automático" else "Manual"}\nUmbrales: ${r.thresholdCm} cm / LDR ${r.ldrThresholdPercent} %\n$cause"
+        lightOnView?.text = "${if (r.lightOn) "💡 LUZ ENCENDIDA" else "LUZ APAGADA"} · ${if (r.automatic) "Automático" else "Manual"}\n$cause\nUmbrales: ${r.thresholdCm} cm / LDR ${r.ldrThresholdPercent} %"
+        lightOnView?.setTextColor(if (r.lightOn) navy else muted)
+        lightOnView?.background = background(if (r.lightOn) Color.rgb(255, 236, 179) else Color.rgb(232, 238, 241), 10)
         trendView?.values = trend.toList()
         trendView?.invalidate()
     }
@@ -734,25 +772,67 @@ class MainActivity : Activity() {
 
 class TrendView(context: Context) : View(context) {
     var values: List<Float> = emptyList()
+    var lineColor: Int = Color.rgb(8, 127, 140)
+    // fixedRange fija la escala (por ejemplo 0..100 %); marker dibuja una línea horizontal de referencia.
+    var fixedRange: ClosedFloatingPointRange<Float>? = null
+    var marker: Float? = null
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    // Dibuja una cuadrícula y une los valores de distancia con una línea.
+    // Dibuja una cuadrícula y une los valores con una línea.
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val density = resources.displayMetrics.density
         paint.color = Color.rgb(224, 233, 237); paint.strokeWidth = density
         for (i in 1..3) canvas.drawLine(0f, height * i / 4f, width.toFloat(), height * i / 4f, paint)
+        val low = fixedRange?.start ?: ((values.minOrNull() ?: 0f) - 1f)
+        val high = fixedRange?.endInclusive ?: ((values.maxOrNull() ?: 0f) + 1f)
+        fun y(value: Float) = height - (value - low) / (high - low) * (height - 16 * density) - 8 * density
+        marker?.let { m ->
+            paint.color = Color.rgb(16, 44, 64); paint.strokeWidth = 2 * density
+            canvas.drawLine(0f, y(m), width.toFloat(), y(m), paint)
+        }
         if (values.size < 2) return
-        val low = values.min() - 1f
-        val high = values.max() + 1f
         val path = Path()
         values.forEachIndexed { index, value ->
             val x = index.toFloat() * width / (values.size - 1)
-            val y = height - (value - low) / (high - low) * (height - 16 * density) - 8 * density
-            if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            if (index == 0) path.moveTo(x, y(value)) else path.lineTo(x, y(value))
         }
-        paint.style = Paint.Style.STROKE; paint.strokeWidth = 3 * density; paint.color = Color.rgb(8, 127, 140)
+        paint.style = Paint.Style.STROKE; paint.strokeWidth = 3 * density; paint.color = lineColor
         canvas.drawPath(path, paint)
         paint.style = Paint.Style.FILL
+    }
+}
+
+/** Barra horizontal de luminosidad: se llena según el % de la LDR y marca el umbral de oscuridad. */
+class LdrBar(context: Context) : View(context) {
+    companion object {
+        val amber: Int = Color.rgb(245, 166, 35)
+        val amberDark: Int = Color.rgb(176, 104, 0)
+    }
+    var percent: Float = 0f
+    var threshold: Float = 30f
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val box = android.graphics.RectF()
+    // Dibuja el fondo, el relleno degradado (oscuro → luz) y la marca del umbral.
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        val density = resources.displayMetrics.density
+        val radius = height / 2f
+        box.set(0f, 0f, width.toFloat(), height.toFloat())
+        paint.shader = null; paint.color = Color.rgb(224, 233, 237)
+        canvas.drawRoundRect(box, radius, radius, paint)
+        val fill = width * percent.coerceIn(0f, 100f) / 100f
+        if (fill > 0f) {
+            paint.shader = android.graphics.LinearGradient(0f, 0f, width.toFloat(), 0f,
+                Color.rgb(16, 44, 64), Color.rgb(255, 214, 10), android.graphics.Shader.TileMode.CLAMP)
+            box.set(0f, 0f, fill.coerceAtLeast(height.toFloat()), height.toFloat())
+            canvas.drawRoundRect(box, radius, radius, paint)
+            paint.shader = null
+        }
+        val x = width * threshold.coerceIn(0f, 100f) / 100f
+        paint.color = Color.WHITE; paint.strokeWidth = 5 * density
+        canvas.drawLine(x, 0f, x, height.toFloat(), paint)
+        paint.color = Color.rgb(16, 44, 64); paint.strokeWidth = 2 * density
+        canvas.drawLine(x, 0f, x, height.toFloat(), paint)
     }
 }
 
@@ -906,7 +986,7 @@ class AppDatabase(context: Context, private val security: DeviceSecurity) : SQLi
     // Valida los datos, deriva la contraseña con una sal y rechaza usuarios repetidos.
     @Synchronized fun register(user: String, password: String): String {
         if (!PasswordHasher.validUser(user)) return "Usuario: usa entre 3 y 32 letras, números, punto, guion o guion bajo."
-        if (!PasswordHasher.validPassword(password)) return "La contraseña debe tener entre 12 y 128 caracteres."
+        if (!PasswordHasher.validPassword(password)) return "La contraseña debe tener entre 6 y 128 caracteres."
         val salt = PasswordHasher.salt()
         val chars = password.toCharArray()
         val hash = try { PasswordHasher.hash(chars, salt) } finally { chars.fill('\u0000') }

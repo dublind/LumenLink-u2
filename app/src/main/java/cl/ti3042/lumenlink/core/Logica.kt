@@ -176,8 +176,8 @@ object PasswordHasher {
         MessageDigest.isEqual(hash(password, salt), expected)
     // Acepta entre 3 y 32 letras, números, puntos, guiones o guiones bajos.
     fun validUser(value: String): Boolean = value.matches(Regex("[a-zA-Z0-9._-]{3,32}"))
-    // Acepta contraseñas de 12 a 128 caracteres.
-    fun validPassword(value: String): Boolean = value.length in 12..128
+    // Acepta contraseñas de 6 a 128 caracteres.
+    fun validPassword(value: String): Boolean = value.length in 6..128
 }
 
 // BLOQUE 4: CONSULTA Y CÁLCULOS DEL HISTORIAL. HistoryFilter selecciona lecturas; ReadingStats las resume; EnergyCalculator estima consumo y ahorro.

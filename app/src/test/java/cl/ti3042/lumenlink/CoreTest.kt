@@ -73,6 +73,7 @@ class CoreTest {
         Assert.assertFalse(PasswordHasher.validUser("ab"))
         Assert.assertTrue(PasswordHasher.validUser("estudiante_01"))
         Assert.assertFalse(PasswordHasher.validPassword("corta"))
+        Assert.assertTrue(PasswordHasher.validPassword("seis66"))
         Assert.assertFalse(PasswordHasher.validPassword("a".repeat(129)))
     }
     // Dos mensajes seguidos, incluso con tildes, deben recuperarse por separado.

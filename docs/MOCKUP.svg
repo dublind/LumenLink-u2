@@ -15,7 +15,7 @@
 <text x="64" y="351" font-family="Arial,sans-serif" font-size="13" fill="#526876" font-weight="normal">Usuario</text>
 <rect x="52" y="382" width="236" height="40" rx="8" fill="#ffffff"/>
 <text x="64" y="407" font-family="Arial,sans-serif" font-size="13" fill="#526876" font-weight="normal">Contraseña</text>
-<text x="52" y="450" font-family="Arial,sans-serif" font-size="12" fill="#526876" font-weight="normal">Contraseña de 12 a 128 caracteres</text>
+<text x="52" y="450" font-family="Arial,sans-serif" font-size="12" fill="#526876" font-weight="normal">Contraseña de 6 a 128 caracteres</text>
 <rect x="52" y="474" width="236" height="40" rx="8" fill="#087f8c"/>
 <text x="64" y="499" font-family="Arial,sans-serif" font-size="13" fill="#ffffff" font-weight="bold">Iniciar sesión</text>
 <rect x="52" y="530" width="236" height="40" rx="8" fill="#087f8c"/>
